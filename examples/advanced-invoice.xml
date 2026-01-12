@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2" xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2" xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2" xmlns:ccts="urn:un:unece:uncefact:documentation:2" xmlns:qdt="urn:oasis:names:specification:ubl:schema:xsd:QualifiedDataTypes-2" xmlns:udt="urn:oasis:names:specification:ubl:schema:xsd:UnqualifiedDataTypes-2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <cbc:UBLVersionID>2.1</cbc:UBLVersionID>
+  <cbc:CustomizationID>urn:cen.eu:en16931:2017#compliant#urn:efactura.mfinante.ro:CIUS-RO:1.0.1</cbc:CustomizationID>
+  <cbc:ID>TS2024-001</cbc:ID>
+  <cbc:IssueDate>2024-01-15</cbc:IssueDate>
+  <cbc:DueDate>2024-02-15</cbc:DueDate>
+  <cbc:InvoiceTypeCode>380</cbc:InvoiceTypeCode>
+  <cbc:Note>Servicii de dezvoltare software</cbc:Note>
+  <cbc:DocumentCurrencyCode>RON</cbc:DocumentCurrencyCode>
+  <cbc:BuyerReference>PO-12345</cbc:BuyerReference>
+  <cac:InvoicePeriod>
+    <cbc:StartDate>2024-01-01</cbc:StartDate>
+    <cbc:EndDate>2024-01-31</cbc:EndDate>
+    <cbc:DescriptionCode>35</cbc:DescriptionCode>
+  </cac:InvoicePeriod>
+  <cac:AccountingSupplierParty>
+    <cac:Party>
+      <cac:PostalAddress>
+        <cbc:StreetName>Calea Victoriei 100</cbc:StreetName>
+        <cbc:AdditionalStreetName>Etaj 5, Birou 501</cbc:AdditionalStreetName>
+        <cbc:CityName>SECTOR1</cbc:CityName>
+        <cbc:PostalZone>010271</cbc:PostalZone>
+        <cbc:CountrySubentity>RO-B</cbc:CountrySubentity>
+        <cac:Country>
+          <cbc:IdentificationCode>RO</cbc:IdentificationCode>
+        </cac:Country>
+      </cac:PostalAddress>
+      <cac:PartyTaxScheme>
+        <cbc:CompanyID>RO11223344</cbc:CompanyID>
+        <cac:TaxScheme>
+          <cbc:ID>VAT</cbc:ID>
+        </cac:TaxScheme>
+      </cac:PartyTaxScheme>
+      <cac:PartyLegalEntity>
+        <cbc:RegistrationName>Tech Solutions S.R.L.</cbc:RegistrationName>
+        <cbc:CompanyID>J40/789/2018</cbc:CompanyID>
+        <cbc:CompanyLegalForm>Capital social: 10.000 LEI</cbc:CompanyLegalForm>
+      </cac:PartyLegalEntity>
+      <cac:Contact>
+        <cbc:Telephone>+40213000000</cbc:Telephone>
+        <cbc:ElectronicMail>facturi@techsolutions.ro</cbc:ElectronicMail>
+      </cac:Contact>
+    </cac:Party>
+  </cac:AccountingSupplierParty>
+  <cac:AccountingCustomerParty>
+    <cac:Party>
+      <cac:PostalAddress>
+        <cbc:StreetName>Strada Businessului 42</cbc:StreetName>
+        <cbc:CityName>Timișoara</cbc:CityName>
+        <cbc:PostalZone>300001</cbc:PostalZone>
+        <cbc:CountrySubentity>RO-TM</cbc:CountrySubentity>
+        <cac:Country>
+          <cbc:IdentificationCode>RO</cbc:IdentificationCode>
+        </cac:Country>
+      </cac:PostalAddress>
+      <cac:PartyTaxScheme>
+        <cbc:CompanyID>RO99887766</cbc:CompanyID>
+        <cac:TaxScheme>
+          <cbc:ID>VAT</cbc:ID>
+        </cac:TaxScheme>
+      </cac:PartyTaxScheme>
+      <cac:PartyLegalEntity>
+        <cbc:RegistrationName>Client Premium S.R.L.</cbc:RegistrationName>
+      </cac:PartyLegalEntity>
+      <cac:Contact>
+        <cbc:ElectronicMail>accounting@clientpremium.ro</cbc:ElectronicMail>
+      </cac:Contact>
+    </cac:Party>
+  </cac:AccountingCustomerParty>
+  <cac:PaymentMeans>
+    <cbc:PaymentMeansCode name="Transfer bancar">30</cbc:PaymentMeansCode>
+    <cbc:PaymentID>REF-2024-001</cbc:PaymentID>
+    <cac:PayeeFinancialAccount>
+      <cbc:ID>RO49AAAA1B31007593840000</cbc:ID>
+      <cbc:Name>Tech Solutions S.R.L.</cbc:Name>
+      <cac:FinancialInstitutionBranch>
+        <cbc:ID>BTRLRO22</cbc:ID>
+      </cac:FinancialInstitutionBranch>
+    </cac:PayeeFinancialAccount>
+  </cac:PaymentMeans>
+  <cac:PaymentTerms>
+    <cbc:Note>Net 30 zile</cbc:Note>
+  </cac:PaymentTerms>
+  <cac:TaxTotal>
+    <cbc:TaxAmount currencyID="RON">2375.00</cbc:TaxAmount>
+    <cac:TaxSubtotal>
+      <cbc:TaxableAmount currencyID="RON">12500.00</cbc:TaxableAmount>
+      <cbc:TaxAmount currencyID="RON">2375.00</cbc:TaxAmount>
+      <cac:TaxCategory>
+        <cbc:ID>S</cbc:ID>
+        <cbc:Percent>19.00</cbc:Percent>
+        <cac:TaxScheme>
+          <cbc:ID>VAT</cbc:ID>
+        </cac:TaxScheme>
+      </cac:TaxCategory>
+    </cac:TaxSubtotal>
+  </cac:TaxTotal>
+  <cac:LegalMonetaryTotal>
+    <cbc:LineExtensionAmount currencyID="RON">12500.00</cbc:LineExtensionAmount>
+    <cbc:TaxExclusiveAmount currencyID="RON">12500.00</cbc:TaxExclusiveAmount>
+    <cbc:TaxInclusiveAmount currencyID="RON">14875.00</cbc:TaxInclusiveAmount>
+    <cbc:PayableAmount currencyID="RON">14875.00</cbc:PayableAmount>
+  </cac:LegalMonetaryTotal>
+  <cac:InvoiceLine>
+    <cbc:ID>1</cbc:ID>
+    <cbc:InvoicedQuantity unitCode="HUR">160</cbc:InvoicedQuantity>
+    <cbc:LineExtensionAmount currencyID="RON">12000.00</cbc:LineExtensionAmount>
+    <cac:Item>
+      <cbc:Description>Dezvoltare aplicație web - Ianuarie 2024</cbc:Description>
+      <cbc:Name>Servicii dezvoltare software</cbc:Name>
+      <cac:SellersItemIdentification>
+        <cbc:ID>SRV-DEV-001</cbc:ID>
+      </cac:SellersItemIdentification>
+      <cac:ClassifiedTaxCategory>
+        <cbc:ID>S</cbc:ID>
+        <cbc:Percent>19.00</cbc:Percent>
+        <cac:TaxScheme>
+          <cbc:ID>VAT</cbc:ID>
+        </cac:TaxScheme>
+      </cac:ClassifiedTaxCategory>
+    </cac:Item>
+    <cac:Price>
+      <cbc:PriceAmount currencyID="RON">75.00</cbc:PriceAmount>
+    </cac:Price>
+  </cac:InvoiceLine>
+  <cac:InvoiceLine>
+    <cbc:ID>2</cbc:ID>
+    <cbc:InvoicedQuantity unitCode="MON">1</cbc:InvoicedQuantity>
+    <cbc:LineExtensionAmount currencyID="RON">500.00</cbc:LineExtensionAmount>
+    <cac:Item>
+      <cbc:Name>Hosting cloud - Ianuarie</cbc:Name>
+      <cac:SellersItemIdentification>
+        <cbc:ID>SRV-HOST-001</cbc:ID>
+      </cac:SellersItemIdentification>
+      <cac:ClassifiedTaxCategory>
+        <cbc:ID>S</cbc:ID>
+        <cbc:Percent>19.00</cbc:Percent>
+        <cac:TaxScheme>
+          <cbc:ID>VAT</cbc:ID>
+        </cac:TaxScheme>
+      </cac:ClassifiedTaxCategory>
+    </cac:Item>
+    <cac:Price>
+      <cbc:PriceAmount currencyID="RON">500.00</cbc:PriceAmount>
+    </cac:Price>
+  </cac:InvoiceLine>
+</Invoice>

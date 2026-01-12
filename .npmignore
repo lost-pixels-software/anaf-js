@@ -1,0 +1,26 @@
+# Source files (dist is published)
+src/
+tsconfig.json
+tsconfig.build.json
+bun.lockb
+
+# Examples and tests
+examples/
+
+# Editor/IDE
+.cursor/
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Misc
+*.log
+*.tsbuildinfo
+
