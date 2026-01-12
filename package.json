@@ -1,5 +1,5 @@
 {
-  "name": "anaf-efactura",
+  "name": "anaf-js",
   "version": "1.0.0",
   "description": "CIUS-RO compliant e-Invoice generator for Romanian ANAF e-Factura system",
   "type": "module",

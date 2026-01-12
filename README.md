@@ -1,4 +1,4 @@
-# anaf-efactura
+# anaf-js
 
 A TypeScript/JavaScript library for generating **CIUS-RO compliant** UBL 2.1 invoices for the Romanian ANAF e-Factura system.
 
@@ -16,11 +16,11 @@ A TypeScript/JavaScript library for generating **CIUS-RO compliant** UBL 2.1 inv
 ## Installation
 
 ```bash
-npm install anaf-efactura
+npm install anaf-js
 # or
-bun add anaf-efactura
+bun add anaf-js
 # or
-yarn add anaf-efactura
+yarn add anaf-js
 ```
 
 ## Quick Start
@@ -28,7 +28,7 @@ yarn add anaf-efactura
 ### Simple Invoice (Automatic Calculations)
 
 ```typescript
-import { Invoice } from "anaf-efactura";
+import { Invoice } from "anaf-js";
 
 const invoice = Invoice.fromSimpleInput({
   invoiceNumber: "INV-2024-001",
@@ -88,7 +88,7 @@ console.log(xml);
 ### Builder Pattern (Full Control)
 
 ```typescript
-import { Invoice } from "anaf-efactura";
+import { Invoice } from "anaf-js";
 
 const invoice = new Invoice()
   .setGeneralData({
@@ -279,7 +279,7 @@ import {
   normalizeVatNumber,
   sanitizeCounty,
   sanitizeBucharestSector,
-} from "anaf-efactura";
+} from "anaf-js";
 
 formatDate(new Date()); // '2024-01-15'
 normalizeVatNumber("12345678"); // 'RO12345678'
@@ -296,7 +296,7 @@ import {
   PaymentMeansCodes,
   CommonUnitCodes,
   RomanianCountyCodes,
-} from "anaf-efactura";
+} from "anaf-js";
 ```
 
 ## JavaScript Usage
@@ -304,7 +304,7 @@ import {
 Works with CommonJS:
 
 ```javascript
-const { Invoice } = require("anaf-efactura");
+const { Invoice } = require("anaf-js");
 
 const invoice = Invoice.fromSimpleInput({
   invoiceNumber: "INV-001",
