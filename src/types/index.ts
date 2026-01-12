@@ -1,6 +1,6 @@
 /**
  * CIUS-RO Compliant Invoice Types
- * 
+ *
  * These types are designed to provide flexibility while ensuring
  * compliance with Romanian e-Invoice requirements.
  */
@@ -12,7 +12,7 @@ import type {
   PaymentMeansCode,
   TaxExemptionCode,
   UnitCode,
-} from '../utils/codes';
+} from "../utils/codes";
 
 // =============================================================================
 // Address Types
@@ -95,68 +95,6 @@ export interface InvoiceLineInput {
   taxExemptionReasonCode?: TaxExemptionCode;
   /** Tax exemption reason description */
   taxExemptionReason?: string;
-}
-
-export interface InvoiceLineComputed extends InvoiceLineInput {
-  /** Computed line extension amount (quantity × unitPrice) */
-  lineExtensionAmount: number;
-  /** Computed VAT amount for this line */
-  vatAmount: number;
-  /** Resolved tax category */
-  resolvedTaxCategoryCode: TaxCategoryCode;
-  /** Resolved VAT percent (always a number after computation) */
-  vatPercent: number;
-}
-
-// =============================================================================
-// Tax Data Types
-// =============================================================================
-
-export interface TaxSubtotalData {
-  /** Tax category ID */
-  categoryId: TaxCategoryCode;
-  /** Tax scheme ID (usually "VAT") */
-  taxSchemeId: string;
-  /** Tax percentage (null for exempt categories) */
-  taxPercent: number | null;
-  /** Sum of line amounts for this tax category */
-  taxableAmount: number;
-  /** Calculated tax amount */
-  taxAmount: number;
-  /** Tax exemption reason code */
-  taxExemptionReasonCode?: TaxExemptionCode;
-  /** Tax exemption reason description */
-  taxExemptionReason?: string;
-}
-
-export interface TaxTotalData {
-  /** Total VAT amount */
-  taxAmount: number;
-  /** Tax subtotals grouped by category/percentage */
-  taxSubtotals: TaxSubtotalData[];
-}
-
-// =============================================================================
-// Monetary Totals Types
-// =============================================================================
-
-export interface MonetaryTotals {
-  /** Sum of all line extension amounts (before VAT) */
-  lineExtensionAmount: number;
-  /** Total amount before VAT */
-  taxExclusiveAmount: number;
-  /** Total amount including VAT */
-  taxInclusiveAmount: number;
-  /** Amount prepaid (optional) */
-  prepaidAmount?: number;
-  /** Rounding amount (optional) */
-  payableRoundingAmount?: number;
-  /** Final amount to be paid */
-  payableAmount: number;
-  /** Allowances total (optional) */
-  allowanceTotalAmount?: number;
-  /** Charges total (optional) */
-  chargeTotalAmount?: number;
 }
 
 // =============================================================================
@@ -262,90 +200,188 @@ export interface AllowanceCharge {
 }
 
 // =============================================================================
-// Main Invoice Configuration Types
+// Invoice Config
 // =============================================================================
 
-export interface InvoiceGeneralData {
-  /** Invoice series (prefix) */
-  invoiceSeries?: string;
-  /** Invoice number */
+/**
+ * Complete invoice configuration with ALL fields explicitly typed.
+ *
+ * Required fields MUST be provided - TypeScript enforces this at compile time.
+ * Optional fields (marked with ?) can be omitted - they have sensible defaults.
+ */
+export interface InvoiceConfig {
+  // ===========================================================================
+  // REQUIRED: Invoice Identification
+  // ===========================================================================
+
+  /**
+   * Invoice number (REQUIRED)
+   * @example "2024-001", "INV001"
+   */
   invoiceNumber: string;
-  /** Issue date */
-  issueDate: Date | string;
-  /** Due date (defaults to issue date) */
-  dueDate?: Date | string;
-  /** Invoice type code (default: 380 - Commercial Invoice) */
-  invoiceTypeCode?: InvoiceTypeCode;
-  /** Currency code (always RON for Romanian invoices) */
-  currencyCode?: string;
-  /** Invoice note */
-  note?: string;
-  /** Buyer reference */
-  buyerReference?: string;
-  /** Order reference */
-  orderReference?: DocumentReference;
-  /** Contract reference */
-  contractReference?: DocumentReference;
-  /** Invoice period */
-  invoicePeriod?: InvoicePeriod;
-  /** VAT point date (tax point date) */
-  taxPointDate?: Date | string;
-}
 
-// =============================================================================
-// Invoice Input (for simple builder interface)
-// =============================================================================
-
-export interface SimpleInvoiceInput {
-  /** Invoice number (with optional series) */
-  invoiceNumber: string;
-  /** Invoice series (optional, can be included in invoiceNumber) */
-  invoiceSeries?: string;
-  /** Issue date */
+  /**
+   * Invoice issue date (REQUIRED)
+   * @example new Date(), "2024-01-15"
+   */
   issueDate: Date | string;
-  /** Due date */
-  dueDate?: Date | string;
-  /** Invoice type */
-  invoiceTypeCode?: InvoiceTypeCode;
-  /** Note */
-  note?: string;
-  /** Seller information */
+
+  // ===========================================================================
+  // REQUIRED: Parties
+  // ===========================================================================
+
+  /**
+   * Seller/Supplier information (REQUIRED)
+   * Must include: registrationName, registrationCode, vatCode, address
+   */
   seller: Seller;
-  /** Buyer information */
+
+  /**
+   * Buyer/Customer information (REQUIRED)
+   * Must include: registrationName, registrationCode, address
+   */
   buyer: Buyer;
-  /** Invoice line items */
+
+  // ===========================================================================
+  // REQUIRED: Line Items
+  // ===========================================================================
+
+  /**
+   * Invoice line items (REQUIRED - at least one)
+   * Each line needs: name, quantity, unitPrice
+   * Optional per line: vatPercent, unitCode, description, taxCategoryCode
+   */
   lines: InvoiceLineInput[];
-  /** Payment IBAN (shortcut for simple bank transfer) */
-  paymentIban?: string;
-  /** Default VAT percentage for lines without explicit VAT */
+
+  // ===========================================================================
+  // OPTIONAL: Invoice Metadata
+  // ===========================================================================
+
+  /**
+   * Invoice series/prefix
+   * @example "ABC", "TS"
+   * @default undefined (no prefix)
+   */
+  invoiceSeries?: string;
+
+  /**
+   * Payment due date
+   * @default Same as issueDate
+   */
+  dueDate?: Date | string;
+
+  /**
+   * Invoice type code
+   * - "380": Commercial Invoice (default)
+   * - "381": Credit Note
+   * - "384": Corrected Invoice
+   * - "389": Self-billed Invoice (Autofactură)
+   * - "751": Invoice for accounting purposes
+   * @default "380"
+   */
+  invoiceTypeCode?: InvoiceTypeCode;
+
+  /**
+   * Currency code (ISO 4217)
+   * @default "RON"
+   */
+  currencyCode?: string;
+
+  /**
+   * Free-text note/comment on invoice
+   * @example "Mulțumim pentru colaborare!"
+   */
+  note?: string;
+
+  /**
+   * Buyer's reference/order number
+   * @example "PO-2024-001"
+   */
+  buyerReference?: string;
+
+  /**
+   * VAT point date (when tax becomes due)
+   * @default undefined (uses issue date)
+   */
+  taxPointDate?: Date | string;
+
+  // ===========================================================================
+  // OPTIONAL: VAT Configuration
+  // ===========================================================================
+
+  /**
+   * Default VAT percentage for lines without explicit vatPercent
+   * @example 19 (for 19% VAT)
+   * @default 0
+   */
   defaultVatPercent?: number;
-}
 
-// =============================================================================
-// Full Invoice Data (computed/final)
-// =============================================================================
+  // ===========================================================================
+  // OPTIONAL: Payment Information
+  // ===========================================================================
 
-export interface InvoiceData {
-  /** General invoice information */
-  generalData: InvoiceGeneralData;
-  /** Seller party */
-  seller: Seller;
-  /** Buyer party */
-  buyer: Buyer;
-  /** Payment means (optional) */
+  /**
+   * Full payment means configuration
+   * Use this for detailed payment setup (card, direct debit, etc.)
+   */
   paymentMeans?: PaymentMeans;
-  /** Payment terms (optional) */
+
+  /**
+   * Shortcut: Payment IBAN for simple bank transfer
+   * If provided, creates paymentMeans with code "30" (credit transfer)
+   * @example "RO49AAAA1B31007593840000"
+   */
+  paymentIban?: string;
+
+  /**
+   * Payment terms/conditions
+   * @example { note: "Payment within 30 days" }
+   */
   paymentTerms?: PaymentTerms;
-  /** Document-level allowances/charges */
-  allowanceCharges?: AllowanceCharge[];
-  /** Tax totals */
-  taxTotal: TaxTotalData;
-  /** Monetary totals */
-  monetaryTotals: MonetaryTotals;
-  /** Invoice lines */
-  lines: InvoiceLineComputed[];
-  /** Preceding invoice references (for credit notes) */
+
+  // ===========================================================================
+  // OPTIONAL: Document References
+  // ===========================================================================
+
+  /**
+   * Order reference (purchase order number)
+   * @example { id: "PO-2024-001" }
+   */
+  orderReference?: DocumentReference;
+
+  /**
+   * Contract reference
+   * @example { id: "CONTRACT-2024-001" }
+   */
+  contractReference?: DocumentReference;
+
+  /**
+   * Preceding invoice references (REQUIRED for credit notes)
+   * Links this document to the original invoice being credited
+   * @example [{ id: "INV-2024-001", issueDate: "2024-01-01" }]
+   */
   precedingInvoiceReferences?: DocumentReference[];
+
+  // ===========================================================================
+  // OPTIONAL: Invoice Period
+  // ===========================================================================
+
+  /**
+   * Billing period (for services billed over time)
+   * @example { startDate: "2024-01-01", endDate: "2024-01-31" }
+   */
+  invoicePeriod?: InvoicePeriod;
+
+  // ===========================================================================
+  // OPTIONAL: Allowances & Charges (Document Level)
+  // ===========================================================================
+
+  /**
+   * Document-level discounts and surcharges
+   * - chargeIndicator: false = discount, true = surcharge
+   * @example [{ chargeIndicator: false, reason: "10% discount", amount: 100, vatPercent: 19 }]
+   */
+  allowanceCharges?: AllowanceCharge[];
 }
 
 // =============================================================================
@@ -359,4 +395,4 @@ export type {
   PaymentMeansCode,
   TaxExemptionCode,
   UnitCode,
-} from '../utils/codes';
+} from "../utils/codes";

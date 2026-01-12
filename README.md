@@ -6,40 +6,37 @@ A TypeScript/JavaScript library for generating **CIUS-RO compliant** UBL 2.1 inv
 
 - ✅ **CIUS-RO Compliant** - Generates XML invoices that pass ANAF validation
 - ✅ **Automatic Calculations** - VAT, totals, and tax subtotals computed automatically
-- ✅ **Flexible API** - Simple one-liner or detailed builder pattern
+- ✅ **Type-Safe** - TypeScript enforces required fields at compile time
+- ✅ **Simple API** - One method: `Invoice.buildXml(config)`
 - ✅ **Full Invoice Types** - Commercial invoices, credit notes, self-invoices
 - ✅ **VAT Categories** - Standard, zero-rated, exempt, reverse charge
 - ✅ **Address Sanitization** - Auto-formats Bucharest sectors and county codes
-- ✅ **TypeScript First** - Full type safety and IntelliSense support
-- ✅ **Works in JS & TS** - ESM and CommonJS exports
 
 ## Installation
 
 ```bash
-npm install anaf-js
-# or
 bun add anaf-js
 # or
-yarn add anaf-js
+npm install anaf-js
 ```
 
 ## Quick Start
 
-### Simple Invoice (Automatic Calculations)
-
 ```typescript
 import { Invoice } from "anaf-js";
 
-const invoice = Invoice.fromSimpleInput({
-  invoiceNumber: "INV-2024-001",
-  invoiceSeries: "ABC",
+const xml = Invoice.buildXml({
+  // ═══════════════════════════════════════════════════════════════════════════
+  // REQUIRED - TypeScript will error if you forget these
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  invoiceNumber: "2024-001",
   issueDate: new Date(),
-  dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
 
   seller: {
     registrationName: "Furnizor S.R.L.",
     registrationCode: "12345678",
-    vatCode: "RO12345678",
+    vatCode: "RO12345678", // null if not VAT registered
     registrationNumber: "J40/123/2020",
     legalFormData: "Capital social: 200 LEI",
     address: {
@@ -66,9 +63,9 @@ const invoice = Invoice.fromSimpleInput({
     {
       name: "Servicii consultanță",
       quantity: 10,
-      unitCode: "HUR", // Hours
+      unitCode: "HUR", // Optional: defaults to "EA"
       unitPrice: 150,
-      vatPercent: 19,
+      vatPercent: 19, // Optional: uses defaultVatPercent if omitted
     },
     {
       name: "Licență software",
@@ -78,69 +75,37 @@ const invoice = Invoice.fromSimpleInput({
     },
   ],
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // OPTIONAL - Omit any you don't need
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  invoiceSeries: "ABC", // Invoice prefix
+  dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+  defaultVatPercent: 19, // Default VAT for lines without vatPercent
   paymentIban: "RO49AAAA1B31007593840000",
+  note: "Mulțumim pentru colaborare!",
+
+  // invoiceTypeCode: "380",             // Default: Commercial Invoice
+  // currencyCode: "RON",                // Default: RON
+  // buyerReference: "PO-2024-001",
+  // taxPointDate: new Date(),
+  // orderReference: { id: "PO-001" },
+  // contractReference: { id: "CONTRACT-001" },
+  // invoicePeriod: { startDate: "2024-01-01", endDate: "2024-01-31" },
+  // paymentTerms: { note: "Payment within 30 days" },
+  // paymentMeans: { ... },              // Full payment config (alternative to paymentIban)
+  // allowanceCharges: [...],            // Document-level discounts/surcharges
+  // precedingInvoiceReferences: [...],  // Required for credit notes
 });
 
-const xml = invoice.generateXml();
 console.log(xml);
 ```
 
-### Builder Pattern (Full Control)
+## API
 
-```typescript
-import { Invoice } from "anaf-js";
+### `Invoice.buildXml(config)`
 
-const invoice = new Invoice()
-  .setGeneralData({
-    invoiceSeries: "TS",
-    invoiceNumber: "2024-001",
-    issueDate: new Date(),
-    dueDate: new Date(),
-    invoiceTypeCode: "380", // Commercial invoice
-    note: "Mulțumim pentru colaborare!",
-  })
-  .setSeller({
-    registrationName: "Tech Solutions S.R.L.",
-    registrationCode: "11223344",
-    vatCode: "RO11223344",
-    registrationNumber: "J40/789/2018",
-    legalFormData: "Capital social: 10.000 LEI",
-    address: {
-      streetName: "Calea Victoriei 100",
-      cityName: "SECTOR1",
-      postalZone: "010271",
-      countrySubentity: "RO-B",
-    },
-  })
-  .setBuyer({
-    registrationName: "Client Premium S.R.L.",
-    registrationCode: "99887766",
-    vatCode: "RO99887766",
-    address: {
-      streetName: "Strada Business 42",
-      cityName: "Timișoara",
-      postalZone: "300001",
-      countrySubentity: "RO-TM",
-    },
-  })
-  .setPaymentMeans({
-    paymentMeansCode: "30",
-    bankTransfer: {
-      accountId: "RO49AAAA1B31007593840000",
-      accountName: "Tech Solutions S.R.L.",
-      bankId: "BTRLRO22",
-    },
-  })
-  .addLine({
-    name: "Software Development",
-    quantity: 160,
-    unitCode: "HUR",
-    unitPrice: 75,
-    vatPercent: 19,
-  });
-
-const xml = invoice.generateXml();
-```
+Returns the UBL 2.1 XML string directly.
 
 ## Invoice Types
 
@@ -167,109 +132,132 @@ const xml = invoice.generateXml();
 ## Credit Notes
 
 ```typescript
-const creditNote = new Invoice()
-  .setGeneralData({
-    invoiceNumber: 'CN-001',
-    issueDate: new Date(),
-    invoiceTypeCode: '381', // Credit note
-  })
-  .setSeller({ ... })
-  .setBuyer({ ... })
-  .addPrecedingInvoiceReference({
-    id: 'INV-2024-001',
-    issueDate: new Date('2024-01-01'),
-  })
-  .addLine({
-    name: 'Returned product',
-    quantity: -1, // Negative for credits
+const creditNote = Invoice.buildXml({
+  invoiceNumber: "CN-001",
+  issueDate: new Date(),
+  invoiceTypeCode: "381",
+
+  seller: { ... },
+  buyer: { ... },
+
+  // Link to original invoice
+  precedingInvoiceReferences: [{
+    id: "INV-2024-001",
+    issueDate: new Date("2024-01-01"),
+  }],
+
+  lines: [{
+    name: "Returned product",
+    quantity: -1,  // Negative for credits
     unitPrice: 500,
     vatPercent: 19,
-  });
+  }],
+});
 ```
 
 ## Non-VAT Payer Invoices
 
 ```typescript
-const invoice = Invoice.fromSimpleInput({
-  invoiceNumber: 'PFA-001',
+const invoice = Invoice.buildXml({
+  invoiceNumber: "PFA-001",
   issueDate: new Date(),
+
   seller: {
-    registrationName: 'Freelancer PFA',
-    registrationCode: '12345678',
+    registrationName: "Freelancer PFA",
+    registrationCode: "12345678",
     vatCode: null, // ← Not VAT registered
     address: { ... },
   },
+
   buyer: { ... },
-  lines: [
-    {
-      name: 'Consulting services',
-      quantity: 1,
-      unitPrice: 2000,
-      // VAT will automatically be set to 0 with category 'O'
-    },
-  ],
+
+  lines: [{
+    name: "Consulting services",
+    quantity: 1,
+    unitPrice: 2000,
+    // VAT automatically set to 0 with category 'O'
+  }],
 });
 ```
 
 ## Allowances & Charges
 
 ```typescript
-const invoice = new Invoice()
-  .setGeneralData({ ... })
-  .setSeller({ ... })
-  .setBuyer({ ... })
-  .addLine({ ... })
-  // Document-level discount
-  .addAllowanceCharge({
-    chargeIndicator: false, // false = allowance (discount)
-    reason: '10% loyalty discount',
-    reasonCode: '95',
-    amount: 100,
-    taxCategoryCode: 'S',
-    vatPercent: 19,
-  })
-  // Document-level charge (shipping)
-  .addAllowanceCharge({
-    chargeIndicator: true, // true = charge
-    reason: 'Shipping',
-    reasonCode: 'FC',
-    amount: 50,
-    taxCategoryCode: 'S',
-    vatPercent: 19,
-  });
+const invoice = Invoice.buildXml({
+  invoiceNumber: "INV-001",
+  issueDate: new Date(),
+  seller: { ... },
+  buyer: { ... },
+  lines: [{ ... }],
+
+  allowanceCharges: [
+    // Document-level discount
+    {
+      chargeIndicator: false, // false = discount
+      reason: "10% loyalty discount",
+      reasonCode: "95",
+      amount: 100,
+      taxCategoryCode: "S",
+      vatPercent: 19,
+    },
+    // Document-level surcharge
+    {
+      chargeIndicator: true, // true = surcharge
+      reason: "Shipping",
+      reasonCode: "FC",
+      amount: 50,
+      taxCategoryCode: "S",
+      vatPercent: 19,
+    },
+  ],
+});
 ```
 
-## Manual Override
+## InvoiceConfig Reference
 
-For edge cases where you need full control over calculations:
+### Required Fields
 
-```typescript
-const invoice = new Invoice()
-  .setGeneralData({ ... })
-  .setSeller({ ... })
-  .setBuyer({ ... })
-  .setLines([...])
-  // Override automatic tax calculations
-  .overrideTaxTotal({
-    taxAmount: 190.00,
-    taxSubtotals: [
-      {
-        categoryId: 'S',
-        taxSchemeId: 'VAT',
-        taxPercent: 19,
-        taxableAmount: 1000.00,
-        taxAmount: 190.00,
-      },
-    ],
-  })
-  // Override automatic monetary totals
-  .overrideMonetaryTotals({
-    lineExtensionAmount: 1000.00,
-    taxExclusiveAmount: 1000.00,
-    taxInclusiveAmount: 1190.00,
-    payableAmount: 1190.00,
-  });
-```
+| Field           | Type                 | Description                          |
+| --------------- | -------------------- | ------------------------------------ |
+| `invoiceNumber` | `string`             | Invoice number/ID                    |
+| `issueDate`     | `Date \| string`     | Issue date                           |
+| `seller`        | `Seller`             | Seller info (name, CUI, vatCode, address) |
+| `buyer`         | `Buyer`              | Buyer info (name, CUI, address)      |
+| `lines`         | `InvoiceLineInput[]` | At least one line item               |
+
+### Optional Fields
+
+| Field                        | Type                 | Default      | Description              |
+| ---------------------------- | -------------------- | ------------ | ------------------------ |
+| `invoiceSeries`              | `string`             | -            | Invoice prefix           |
+| `dueDate`                    | `Date \| string`     | issueDate    | Payment due date         |
+| `invoiceTypeCode`            | `string`             | `"380"`      | Invoice type             |
+| `currencyCode`               | `string`             | `"RON"`      | Currency                 |
+| `defaultVatPercent`          | `number`             | `0`          | Default VAT for lines    |
+| `note`                       | `string`             | -            | Invoice note             |
+| `paymentIban`                | `string`             | -            | Shortcut for bank transfer |
+| `paymentMeans`               | `PaymentMeans`       | -            | Full payment config      |
+| `paymentTerms`               | `PaymentTerms`       | -            | Payment terms            |
+| `buyerReference`             | `string`             | -            | Buyer's reference        |
+| `taxPointDate`               | `Date \| string`     | -            | VAT point date           |
+| `orderReference`             | `DocumentReference`  | -            | Purchase order ref       |
+| `contractReference`          | `DocumentReference`  | -            | Contract ref             |
+| `invoicePeriod`              | `InvoicePeriod`      | -            | Billing period           |
+| `allowanceCharges`           | `AllowanceCharge[]`  | -            | Discounts/surcharges     |
+| `precedingInvoiceReferences` | `DocumentReference[]`| -            | For credit notes         |
+
+### Line Item Fields
+
+| Field             | Type     | Required | Description                    |
+| ----------------- | -------- | -------- | ------------------------------ |
+| `name`            | `string` | ✓        | Item/service name              |
+| `quantity`        | `number` | ✓        | Quantity                       |
+| `unitPrice`       | `number` | ✓        | Unit price (excl. VAT)         |
+| `vatPercent`      | `number` | -        | VAT % (uses default if omitted)|
+| `unitCode`        | `string` | -        | Unit code (default: "EA")      |
+| `description`     | `string` | -        | Item description               |
+| `sellerItemId`    | `string` | -        | Seller's item code             |
+| `taxCategoryCode` | `string` | -        | Tax category (auto-determined) |
 
 ## Utility Functions
 
@@ -281,13 +269,13 @@ import {
   sanitizeBucharestSector,
 } from "anaf-js";
 
-formatDate(new Date()); // '2024-01-15'
-normalizeVatNumber("12345678"); // 'RO12345678'
-sanitizeCounty("Cluj"); // 'RO-CJ'
-sanitizeBucharestSector("Sector 1"); // 'SECTOR1'
+formatDate(new Date()); // "2024-01-15"
+normalizeVatNumber("12345678"); // "RO12345678"
+sanitizeCounty("Cluj"); // "RO-CJ"
+sanitizeBucharestSector("Sector 1"); // "SECTOR1"
 ```
 
-## Available Codes
+## Available Constants
 
 ```typescript
 import {
@@ -298,55 +286,6 @@ import {
   RomanianCountyCodes,
 } from "anaf-js";
 ```
-
-## JavaScript Usage
-
-Works with CommonJS:
-
-```javascript
-const { Invoice } = require("anaf-js");
-
-const invoice = Invoice.fromSimpleInput({
-  invoiceNumber: "INV-001",
-  issueDate: new Date(),
-  // ...
-});
-
-const xml = invoice.generateXml();
-```
-
-## API Reference
-
-### Invoice Class
-
-#### Static Methods
-
-- `Invoice.fromSimpleInput(input)` - Create invoice from simple input object
-
-#### Builder Methods
-
-- `.setGeneralData(data)` - Set invoice metadata
-- `.setSeller(seller)` - Set seller/supplier information
-- `.setBuyer(buyer)` - Set buyer/customer information
-- `.setLines(lines)` / `.addLine(line)` - Set/add invoice lines
-- `.setPaymentMeans(payment)` - Set payment information
-- `.setPaymentTerms(terms)` - Set payment terms
-- `.setAllowanceCharges(charges)` / `.addAllowanceCharge(charge)` - Set/add discounts or charges
-- `.setPrecedingInvoiceReferences(refs)` / `.addPrecedingInvoiceReference(ref)` - For credit notes
-- `.setDefaultVatPercent(percent)` - Default VAT for lines without explicit VAT
-
-#### Override Methods
-
-- `.overrideTaxTotal(taxTotal)` - Override automatic tax calculations
-- `.overrideMonetaryTotals(totals)` - Override automatic totals
-
-#### Output Methods
-
-- `.generateXml()` - Generate UBL 2.1 XML string
-- `.getInvoiceData()` - Get computed invoice data object
-- `.getComputedLines()` - Get computed line items
-- `.getTaxTotal()` - Get computed tax totals
-- `.getMonetaryTotals()` - Get computed monetary totals
 
 ## License
 
