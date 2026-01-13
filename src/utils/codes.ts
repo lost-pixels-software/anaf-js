@@ -8,24 +8,41 @@
 // Invoice Type Codes (UNCL1001)
 // =============================================================================
 
-export const InvoiceTypeCodes = ["380", "381", "384", "389", "751"] as const;
+export type InvoiceTypeCode = "380" | "381" | "384" | "389" | "751";
 
-export const InvoiceTypeCodesDescriptions = {
+export const InvoiceTypeCodes: readonly InvoiceTypeCode[] = [
+  "380",
+  "381",
+  "384",
+  "389",
+  "751",
+];
+
+export const InvoiceTypeCodesDescriptions: Record<InvoiceTypeCode, string> = {
   "380": "Commercial Invoice (Factură comercială)",
   "381": "Credit Note (Notă de credit)",
   "384": "Corrected Invoice (Factură corectată)",
   "389": "Self-billed Invoice (Autofactură)",
   "751":
     "Invoice information for accounting purposes (Factură - informații în scopuri contabile)",
-} as const;
-
-export type InvoiceTypeCode = (typeof InvoiceTypeCodes)[number];
+};
 
 // =============================================================================
 // Tax Category Codes (UNCL5305)
 // =============================================================================
 
-export const TaxCategoryCodes = [
+export type TaxCategoryCode =
+  | "S"
+  | "Z"
+  | "E"
+  | "AE"
+  | "K"
+  | "G"
+  | "O"
+  | "L"
+  | "M";
+
+export const TaxCategoryCodes: readonly TaxCategoryCode[] = [
   "S",
   "Z",
   "E",
@@ -35,9 +52,9 @@ export const TaxCategoryCodes = [
   "O",
   "L",
   "M",
-] as const;
+];
 
-export const TaxCategoryCodesDescriptions = {
+export const TaxCategoryCodesDescriptions: Record<TaxCategoryCode, string> = {
   S: "Standard rate (Cotă standard)",
   Z: "Zero rated goods (Cotă zero)",
   E: "Exempt from tax (Scutit de TVA)",
@@ -47,15 +64,72 @@ export const TaxCategoryCodesDescriptions = {
   O: "Services outside scope of tax (Servicii în afara sferei de aplicare)",
   L: "Canary Islands general indirect tax (IGIC)",
   M: "Tax for production, services and importation (IPSI)",
-} as const;
-
-export type TaxCategoryCode = (typeof TaxCategoryCodes)[number];
+};
 
 // =============================================================================
 // Tax Exemption Reason Codes (VATEX)
 // =============================================================================
 
-export const TaxExemptionCodes = [
+export type TaxExemptionCode =
+  | "VATEX-EU-79-C"
+  | "VATEX-EU-132"
+  | "VATEX-EU-132-1A"
+  | "VATEX-EU-132-1B"
+  | "VATEX-EU-132-1C"
+  | "VATEX-EU-132-1D"
+  | "VATEX-EU-132-1E"
+  | "VATEX-EU-132-1F"
+  | "VATEX-EU-132-1G"
+  | "VATEX-EU-132-1H"
+  | "VATEX-EU-132-1I"
+  | "VATEX-EU-132-1J"
+  | "VATEX-EU-132-1K"
+  | "VATEX-EU-132-1L"
+  | "VATEX-EU-132-1M"
+  | "VATEX-EU-132-1N"
+  | "VATEX-EU-132-1O"
+  | "VATEX-EU-132-1P"
+  | "VATEX-EU-132-1Q"
+  | "VATEX-EU-143"
+  | "VATEX-EU-143-1A"
+  | "VATEX-EU-143-1B"
+  | "VATEX-EU-143-1C"
+  | "VATEX-EU-143-1D"
+  | "VATEX-EU-143-1E"
+  | "VATEX-EU-143-1F"
+  | "VATEX-EU-143-1FA"
+  | "VATEX-EU-143-1G"
+  | "VATEX-EU-143-1H"
+  | "VATEX-EU-143-1I"
+  | "VATEX-EU-143-1J"
+  | "VATEX-EU-143-1K"
+  | "VATEX-EU-143-1L"
+  | "VATEX-EU-148"
+  | "VATEX-EU-148-A"
+  | "VATEX-EU-148-B"
+  | "VATEX-EU-148-C"
+  | "VATEX-EU-148-D"
+  | "VATEX-EU-148-E"
+  | "VATEX-EU-148-F"
+  | "VATEX-EU-148-G"
+  | "VATEX-EU-151"
+  | "VATEX-EU-151-1A"
+  | "VATEX-EU-151-1AA"
+  | "VATEX-EU-151-1B"
+  | "VATEX-EU-151-1C"
+  | "VATEX-EU-151-1D"
+  | "VATEX-EU-151-1E"
+  | "VATEX-EU-309"
+  | "VATEX-EU-AE"
+  | "VATEX-EU-D"
+  | "VATEX-EU-F"
+  | "VATEX-EU-G"
+  | "VATEX-EU-I"
+  | "VATEX-EU-IC"
+  | "VATEX-EU-J"
+  | "VATEX-EU-O";
+
+export const TaxExemptionCodes: readonly TaxExemptionCode[] = [
   "VATEX-EU-79-C",
   "VATEX-EU-132",
   "VATEX-EU-132-1A",
@@ -113,29 +187,112 @@ export const TaxExemptionCodes = [
   "VATEX-EU-IC",
   "VATEX-EU-J",
   "VATEX-EU-O",
-] as const;
-
-export type TaxExemptionCode = (typeof TaxExemptionCodes)[number];
+];
 
 // =============================================================================
 // Tax Due Codes (UNCL2005)
 // =============================================================================
 
-export const TaxDueCodes = ["3", "35", "432"] as const;
+export type TaxDueCode = "3" | "35" | "432";
 
-export const TaxDueCodesDescriptions = {
+export const TaxDueCodes: readonly TaxDueCode[] = ["3", "35", "432"];
+
+export const TaxDueCodesDescriptions: Record<TaxDueCode, string> = {
   "3": "Invoice issue date (Data emiterii facturii)",
   "35": "Actual delivery date (Data reală a livrării)",
   "432": "Paid amount on that date (Suma plătită în acea zi)",
-} as const;
-
-export type TaxDueCode = (typeof TaxDueCodes)[number];
+};
 
 // =============================================================================
 // Payment Means Codes (UNCL4461)
 // =============================================================================
 
-export const PaymentMeansCodes = [
+export type PaymentMeansCode =
+  | "1"
+  | "2"
+  | "3"
+  | "4"
+  | "5"
+  | "6"
+  | "7"
+  | "8"
+  | "9"
+  | "10"
+  | "11"
+  | "12"
+  | "13"
+  | "14"
+  | "15"
+  | "16"
+  | "17"
+  | "18"
+  | "19"
+  | "20"
+  | "21"
+  | "22"
+  | "23"
+  | "24"
+  | "25"
+  | "26"
+  | "27"
+  | "28"
+  | "29"
+  | "30"
+  | "31"
+  | "32"
+  | "33"
+  | "34"
+  | "35"
+  | "36"
+  | "37"
+  | "38"
+  | "39"
+  | "40"
+  | "41"
+  | "42"
+  | "43"
+  | "44"
+  | "45"
+  | "46"
+  | "47"
+  | "48"
+  | "49"
+  | "50"
+  | "51"
+  | "52"
+  | "53"
+  | "54"
+  | "55"
+  | "56"
+  | "57"
+  | "58"
+  | "59"
+  | "60"
+  | "61"
+  | "62"
+  | "63"
+  | "64"
+  | "65"
+  | "66"
+  | "67"
+  | "68"
+  | "69"
+  | "70"
+  | "74"
+  | "75"
+  | "76"
+  | "77"
+  | "78"
+  | "91"
+  | "92"
+  | "93"
+  | "94"
+  | "95"
+  | "96"
+  | "97"
+  | "ZZZ";
+
+export const PaymentMeansCodes: readonly PaymentMeansCode[] = [
   "1",
   "2",
   "3",
@@ -219,9 +376,11 @@ export const PaymentMeansCodes = [
   "96",
   "97",
   "ZZZ",
-] as const;
+];
 
-export const CommonPaymentMeansCodesDescriptions = {
+export const CommonPaymentMeansCodesDescriptions: Partial<
+  Record<PaymentMeansCode, string>
+> = {
   "1": "Instrument not defined",
   "10": "In cash",
   "20": "Cheque",
@@ -236,9 +395,7 @@ export const CommonPaymentMeansCodesDescriptions = {
   "58": "SEPA credit transfer",
   "59": "SEPA direct debit",
   ZZZ: "Mutually defined (Altă metodă - definită reciproc)",
-} as const;
-
-export type PaymentMeansCode = (typeof PaymentMeansCodes)[number];
+};
 
 // =============================================================================
 // Unit Codes (UN/ECE Recommendation 20)
