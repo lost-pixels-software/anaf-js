@@ -77,22 +77,18 @@ export { roundMoney } from "./utils/currency";
 export {
   // Invoice type codes
   InvoiceTypeCodes,
-  InvoiceTypeCodesDescriptions,
 
   // Tax category codes
   TaxCategoryCodes,
-  TaxCategoryCodesDescriptions,
 
   // Tax exemption codes
   TaxExemptionCodes,
 
   // Tax due codes
   TaxDueCodes,
-  TaxDueCodesDescriptions,
 
   // Payment means codes
   PaymentMeansCodes,
-  CommonPaymentMeansCodesDescriptions,
 
   // Unit codes
   CommonUnitCodes,

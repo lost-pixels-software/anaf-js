@@ -2,59 +2,31 @@
  * CIUS-RO Compliant Codes for Romanian e-Invoicing
  *
  * Reference: https://mfinante.gov.ro/static/10/eFactura/
+ *
+ * All code types use the `as const` pattern with derived types via `keyof typeof`
+ * to provide better IDE autocomplete and "Go to Definition" support.
  */
 
 // =============================================================================
 // Invoice Type Codes (UNCL1001)
 // =============================================================================
 
-export type InvoiceTypeCode = "380" | "381" | "384" | "389" | "751";
-
-export const InvoiceTypeCodes: readonly InvoiceTypeCode[] = [
-  "380",
-  "381",
-  "384",
-  "389",
-  "751",
-];
-
-export const InvoiceTypeCodesDescriptions: Record<InvoiceTypeCode, string> = {
+export const InvoiceTypeCodes = {
   "380": "Commercial Invoice (Factură comercială)",
   "381": "Credit Note (Notă de credit)",
   "384": "Corrected Invoice (Factură corectată)",
   "389": "Self-billed Invoice (Autofactură)",
   "751":
     "Invoice information for accounting purposes (Factură - informații în scopuri contabile)",
-};
+} as const;
+
+export type InvoiceTypeCode = keyof typeof InvoiceTypeCodes;
 
 // =============================================================================
 // Tax Category Codes (UNCL5305)
 // =============================================================================
 
-export type TaxCategoryCode =
-  | "S"
-  | "Z"
-  | "E"
-  | "AE"
-  | "K"
-  | "G"
-  | "O"
-  | "L"
-  | "M";
-
-export const TaxCategoryCodes: readonly TaxCategoryCode[] = [
-  "S",
-  "Z",
-  "E",
-  "AE",
-  "K",
-  "G",
-  "O",
-  "L",
-  "M",
-];
-
-export const TaxCategoryCodesDescriptions: Record<TaxCategoryCode, string> = {
+export const TaxCategoryCodes = {
   S: "Standard rate (Cotă standard)",
   Z: "Zero rated goods (Cotă zero)",
   E: "Exempt from tax (Scutit de TVA)",
@@ -64,338 +36,179 @@ export const TaxCategoryCodesDescriptions: Record<TaxCategoryCode, string> = {
   O: "Services outside scope of tax (Servicii în afara sferei de aplicare)",
   L: "Canary Islands general indirect tax (IGIC)",
   M: "Tax for production, services and importation (IPSI)",
-};
+} as const;
+
+export type TaxCategoryCode = keyof typeof TaxCategoryCodes;
 
 // =============================================================================
 // Tax Exemption Reason Codes (VATEX)
 // =============================================================================
 
-export type TaxExemptionCode =
-  | "VATEX-EU-79-C"
-  | "VATEX-EU-132"
-  | "VATEX-EU-132-1A"
-  | "VATEX-EU-132-1B"
-  | "VATEX-EU-132-1C"
-  | "VATEX-EU-132-1D"
-  | "VATEX-EU-132-1E"
-  | "VATEX-EU-132-1F"
-  | "VATEX-EU-132-1G"
-  | "VATEX-EU-132-1H"
-  | "VATEX-EU-132-1I"
-  | "VATEX-EU-132-1J"
-  | "VATEX-EU-132-1K"
-  | "VATEX-EU-132-1L"
-  | "VATEX-EU-132-1M"
-  | "VATEX-EU-132-1N"
-  | "VATEX-EU-132-1O"
-  | "VATEX-EU-132-1P"
-  | "VATEX-EU-132-1Q"
-  | "VATEX-EU-143"
-  | "VATEX-EU-143-1A"
-  | "VATEX-EU-143-1B"
-  | "VATEX-EU-143-1C"
-  | "VATEX-EU-143-1D"
-  | "VATEX-EU-143-1E"
-  | "VATEX-EU-143-1F"
-  | "VATEX-EU-143-1FA"
-  | "VATEX-EU-143-1G"
-  | "VATEX-EU-143-1H"
-  | "VATEX-EU-143-1I"
-  | "VATEX-EU-143-1J"
-  | "VATEX-EU-143-1K"
-  | "VATEX-EU-143-1L"
-  | "VATEX-EU-148"
-  | "VATEX-EU-148-A"
-  | "VATEX-EU-148-B"
-  | "VATEX-EU-148-C"
-  | "VATEX-EU-148-D"
-  | "VATEX-EU-148-E"
-  | "VATEX-EU-148-F"
-  | "VATEX-EU-148-G"
-  | "VATEX-EU-151"
-  | "VATEX-EU-151-1A"
-  | "VATEX-EU-151-1AA"
-  | "VATEX-EU-151-1B"
-  | "VATEX-EU-151-1C"
-  | "VATEX-EU-151-1D"
-  | "VATEX-EU-151-1E"
-  | "VATEX-EU-309"
-  | "VATEX-EU-AE"
-  | "VATEX-EU-D"
-  | "VATEX-EU-F"
-  | "VATEX-EU-G"
-  | "VATEX-EU-I"
-  | "VATEX-EU-IC"
-  | "VATEX-EU-J"
-  | "VATEX-EU-O";
+export const TaxExemptionCodes = {
+  "VATEX-EU-79-C": "Exempt under Article 79(c)",
+  "VATEX-EU-132": "Exempt under Article 132",
+  "VATEX-EU-132-1A": "Hospital and medical care",
+  "VATEX-EU-132-1B": "Medical care by certified professionals",
+  "VATEX-EU-132-1C": "Supply of medical goods",
+  "VATEX-EU-132-1D": "Supply of human organs, blood",
+  "VATEX-EU-132-1E": "Dental technicians services",
+  "VATEX-EU-132-1F": "Services by independent groups",
+  "VATEX-EU-132-1G": "Social welfare services",
+  "VATEX-EU-132-1H": "Protection of children and young persons",
+  "VATEX-EU-132-1I": "Education of children or young persons",
+  "VATEX-EU-132-1J": "School or university education",
+  "VATEX-EU-132-1K": "Vocational training or retraining",
+  "VATEX-EU-132-1L": "Staff, supplies for exempted activities",
+  "VATEX-EU-132-1M": "Cultural services and goods",
+  "VATEX-EU-132-1N": "Transport services for sick or injured",
+  "VATEX-EU-132-1O": "Non-commercial radio and TV broadcasts",
+  "VATEX-EU-132-1P": "Fund-raising events by charities",
+  "VATEX-EU-132-1Q": "Services and supplies by member organizations",
+  "VATEX-EU-143": "Exempt under Article 143",
+  "VATEX-EU-143-1A": "Import of goods for final import",
+  "VATEX-EU-143-1B": "Import for intra-Community supply",
+  "VATEX-EU-143-1C": "Import for customs warehousing",
+  "VATEX-EU-143-1D": "Import for free zone",
+  "VATEX-EU-143-1E": "Import for temporary storage",
+  "VATEX-EU-143-1F": "Import under transit",
+  "VATEX-EU-143-1FA": "Import of electricity, gas, heating",
+  "VATEX-EU-143-1G": "Import related to diplomatic missions",
+  "VATEX-EU-143-1H": "Import for international organizations",
+  "VATEX-EU-143-1I": "Import for NATO forces",
+  "VATEX-EU-143-1J": "Import under temporary import arrangements",
+  "VATEX-EU-143-1K": "Import under customs arrangements",
+  "VATEX-EU-143-1L": "Import under outward processing",
+  "VATEX-EU-148": "Exempt under Article 148",
+  "VATEX-EU-148-A": "Fuel for shipping vessels",
+  "VATEX-EU-148-B": "Fuel for rescue vessels",
+  "VATEX-EU-148-C": "Fuel for warships",
+  "VATEX-EU-148-D": "Fuel for aircraft on international routes",
+  "VATEX-EU-148-E": "Fuel for diplomatic flights",
+  "VATEX-EU-148-F": "Fuel and provisions for fishing",
+  "VATEX-EU-148-G": "Fuel and provisions for commercial vessels",
+  "VATEX-EU-151": "Exempt under Article 151",
+  "VATEX-EU-151-1A": "Supplies to diplomatic missions",
+  "VATEX-EU-151-1AA": "Supplies under customs procedures",
+  "VATEX-EU-151-1B": "Supplies to international organizations",
+  "VATEX-EU-151-1C": "Supplies to NATO forces",
+  "VATEX-EU-151-1D": "Supplies to UK forces in Cyprus",
+  "VATEX-EU-151-1E": "Supplies for use in diplomatic or consular missions",
+  "VATEX-EU-309": "Exempt under Article 309",
+  "VATEX-EU-AE": "Intra-community acquisition from small enterprises",
+  "VATEX-EU-D": "Intra-community acquisition for diplomats",
+  "VATEX-EU-F": "Intra-community acquisition for NATO forces",
+  "VATEX-EU-G": "Export outside EU",
+  "VATEX-EU-I": "Intra-community supply",
+  "VATEX-EU-IC": "Intra-community supply (transfer)",
+  "VATEX-EU-J": "Reverse charge",
+  "VATEX-EU-O": "Not subject to VAT",
+} as const;
 
-export const TaxExemptionCodes: readonly TaxExemptionCode[] = [
-  "VATEX-EU-79-C",
-  "VATEX-EU-132",
-  "VATEX-EU-132-1A",
-  "VATEX-EU-132-1B",
-  "VATEX-EU-132-1C",
-  "VATEX-EU-132-1D",
-  "VATEX-EU-132-1E",
-  "VATEX-EU-132-1F",
-  "VATEX-EU-132-1G",
-  "VATEX-EU-132-1H",
-  "VATEX-EU-132-1I",
-  "VATEX-EU-132-1J",
-  "VATEX-EU-132-1K",
-  "VATEX-EU-132-1L",
-  "VATEX-EU-132-1M",
-  "VATEX-EU-132-1N",
-  "VATEX-EU-132-1O",
-  "VATEX-EU-132-1P",
-  "VATEX-EU-132-1Q",
-  "VATEX-EU-143",
-  "VATEX-EU-143-1A",
-  "VATEX-EU-143-1B",
-  "VATEX-EU-143-1C",
-  "VATEX-EU-143-1D",
-  "VATEX-EU-143-1E",
-  "VATEX-EU-143-1F",
-  "VATEX-EU-143-1FA",
-  "VATEX-EU-143-1G",
-  "VATEX-EU-143-1H",
-  "VATEX-EU-143-1I",
-  "VATEX-EU-143-1J",
-  "VATEX-EU-143-1K",
-  "VATEX-EU-143-1L",
-  "VATEX-EU-148",
-  "VATEX-EU-148-A",
-  "VATEX-EU-148-B",
-  "VATEX-EU-148-C",
-  "VATEX-EU-148-D",
-  "VATEX-EU-148-E",
-  "VATEX-EU-148-F",
-  "VATEX-EU-148-G",
-  "VATEX-EU-151",
-  "VATEX-EU-151-1A",
-  "VATEX-EU-151-1AA",
-  "VATEX-EU-151-1B",
-  "VATEX-EU-151-1C",
-  "VATEX-EU-151-1D",
-  "VATEX-EU-151-1E",
-  "VATEX-EU-309",
-  "VATEX-EU-AE",
-  "VATEX-EU-D",
-  "VATEX-EU-F",
-  "VATEX-EU-G",
-  "VATEX-EU-I",
-  "VATEX-EU-IC",
-  "VATEX-EU-J",
-  "VATEX-EU-O",
-];
+export type TaxExemptionCode = keyof typeof TaxExemptionCodes;
 
 // =============================================================================
 // Tax Due Codes (UNCL2005)
 // =============================================================================
 
-export type TaxDueCode = "3" | "35" | "432";
-
-export const TaxDueCodes: readonly TaxDueCode[] = ["3", "35", "432"];
-
-export const TaxDueCodesDescriptions: Record<TaxDueCode, string> = {
+export const TaxDueCodes = {
   "3": "Invoice issue date (Data emiterii facturii)",
   "35": "Actual delivery date (Data reală a livrării)",
   "432": "Paid amount on that date (Suma plătită în acea zi)",
-};
+} as const;
+
+export type TaxDueCode = keyof typeof TaxDueCodes;
 
 // =============================================================================
 // Payment Means Codes (UNCL4461)
 // =============================================================================
 
-export type PaymentMeansCode =
-  | "1"
-  | "2"
-  | "3"
-  | "4"
-  | "5"
-  | "6"
-  | "7"
-  | "8"
-  | "9"
-  | "10"
-  | "11"
-  | "12"
-  | "13"
-  | "14"
-  | "15"
-  | "16"
-  | "17"
-  | "18"
-  | "19"
-  | "20"
-  | "21"
-  | "22"
-  | "23"
-  | "24"
-  | "25"
-  | "26"
-  | "27"
-  | "28"
-  | "29"
-  | "30"
-  | "31"
-  | "32"
-  | "33"
-  | "34"
-  | "35"
-  | "36"
-  | "37"
-  | "38"
-  | "39"
-  | "40"
-  | "41"
-  | "42"
-  | "43"
-  | "44"
-  | "45"
-  | "46"
-  | "47"
-  | "48"
-  | "49"
-  | "50"
-  | "51"
-  | "52"
-  | "53"
-  | "54"
-  | "55"
-  | "56"
-  | "57"
-  | "58"
-  | "59"
-  | "60"
-  | "61"
-  | "62"
-  | "63"
-  | "64"
-  | "65"
-  | "66"
-  | "67"
-  | "68"
-  | "69"
-  | "70"
-  | "74"
-  | "75"
-  | "76"
-  | "77"
-  | "78"
-  | "91"
-  | "92"
-  | "93"
-  | "94"
-  | "95"
-  | "96"
-  | "97"
-  | "ZZZ";
-
-export const PaymentMeansCodes: readonly PaymentMeansCode[] = [
-  "1",
-  "2",
-  "3",
-  "4",
-  "5",
-  "6",
-  "7",
-  "8",
-  "9",
-  "10",
-  "11",
-  "12",
-  "13",
-  "14",
-  "15",
-  "16",
-  "17",
-  "18",
-  "19",
-  "20",
-  "21",
-  "22",
-  "23",
-  "24",
-  "25",
-  "26",
-  "27",
-  "28",
-  "29",
-  "30",
-  "31",
-  "32",
-  "33",
-  "34",
-  "35",
-  "36",
-  "37",
-  "38",
-  "39",
-  "40",
-  "41",
-  "42",
-  "43",
-  "44",
-  "45",
-  "46",
-  "47",
-  "48",
-  "49",
-  "50",
-  "51",
-  "52",
-  "53",
-  "54",
-  "55",
-  "56",
-  "57",
-  "58",
-  "59",
-  "60",
-  "61",
-  "62",
-  "63",
-  "64",
-  "65",
-  "66",
-  "67",
-  "68",
-  "69",
-  "70",
-  "74",
-  "75",
-  "76",
-  "77",
-  "78",
-  "91",
-  "92",
-  "93",
-  "94",
-  "95",
-  "96",
-  "97",
-  "ZZZ",
-];
-
-export const CommonPaymentMeansCodesDescriptions: Partial<
-  Record<PaymentMeansCode, string>
-> = {
+export const PaymentMeansCodes = {
   "1": "Instrument not defined",
+  "2": "Automated clearing house credit",
+  "3": "Automated clearing house debit",
+  "4": "ACH demand debit reversal",
+  "5": "ACH demand credit reversal",
+  "6": "ACH demand credit",
+  "7": "ACH demand debit",
+  "8": "Hold",
+  "9": "National or regional clearing",
   "10": "In cash",
+  "11": "ACH savings credit reversal",
+  "12": "ACH savings debit reversal",
+  "13": "ACH savings credit",
+  "14": "ACH savings debit",
+  "15": "Bookentry credit",
+  "16": "Bookentry debit",
+  "17": "ACH demand cash concentration",
+  "18": "ACH demand cash disbursement",
+  "19": "ACH demand corporate trade payment credit",
   "20": "Cheque",
+  "21": "Banker's draft",
+  "22": "Certified banker's draft",
+  "23": "Bank cheque",
+  "24": "Bill of exchange awaiting acceptance",
+  "25": "Certified cheque",
+  "26": "Local cheque",
+  "27": "ACH demand corporate trade payment debit",
+  "28": "ACH demand CTP credit",
+  "29": "ACH demand CTP debit",
   "30": "Credit transfer",
   "31": "Debit transfer",
+  "32": "ACH demand CCD plus",
+  "33": "ACH demand CCD plus",
+  "34": "ACH PPD",
+  "35": "ACH savings CCD",
+  "36": "ACH savings corporate trade payment credit",
+  "37": "ACH corporate trade payment debit",
+  "38": "ACH corporate trade exchange",
+  "39": "ACH corporate trade exchange",
+  "40": "ACH savings cash concentration",
+  "41": "ACH savings cash disbursement",
   "42": "Payment to bank account",
+  "43": "ACH savings CTP credit",
+  "44": "Accepted bill of exchange",
+  "45": "Referenced home-banking credit transfer",
+  "46": "Interbank debit transfer",
+  "47": "Reference credit transfer",
   "48": "Bank card",
   "49": "Direct debit",
+  "50": "Payment by postgiro",
+  "51": "FR - NORME 6-97-Telereglement",
+  "52": "Urgent commercial payment",
+  "53": "Urgent Treasury Payment",
   "54": "Credit card",
   "55": "Debit card",
+  "56": "Bankgiro",
   "57": "Standing agreement",
   "58": "SEPA credit transfer",
   "59": "SEPA direct debit",
+  "60": "Promissory note",
+  "61": "Promissory note signed by debtor",
+  "62": "Promissory note signed by debtor and endorsed",
+  "63": "Promissory note signed by creditor",
+  "64": "Promissory note signed by creditor and endorsed",
+  "65": "Promissory note signed by bank",
+  "66": "Promissory note signed by bank and endorsed",
+  "67": "Bill drawn by creditor on debtor",
+  "68": "Bill drawn by creditor on bank",
+  "69": "Bill drawn by creditor on third party",
+  "70": "Bill drawn by creditor",
+  "74": "Bill drawn by creditor on debtor - accepted",
+  "75": "Bill drawn by creditor on bank - accepted",
+  "76": "Bill drawn by creditor on third party - accepted",
+  "77": "Bill drawn by creditor - accepted",
+  "78": "Bill drawn for collection",
+  "91": "Not transferable banker's draft",
+  "92": "Not transferable local cheque",
+  "93": "Reference giro",
+  "94": "Urgent giro",
+  "95": "Free format giro",
+  "96": "Clearing between partners",
+  "97": "Mutual offset agreement",
   ZZZ: "Mutually defined (Altă metodă - definită reciproc)",
-};
+} as const;
+
+export type PaymentMeansCode = keyof typeof PaymentMeansCodes;
 
 // =============================================================================
 // Unit Codes (UN/ECE Recommendation 20)
