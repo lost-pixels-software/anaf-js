@@ -65,13 +65,13 @@ const xml = Invoice.buildXml({
       quantity: 10,
       unitCode: "HUR", // Optional: defaults to "EA"
       unitPrice: 150,
-      vatPercent: 19, // Optional: uses defaultVatPercent if omitted
+      vatPercent: 21, // Optional: uses defaultVatPercent if omitted
     },
     {
       name: "Licență software",
       quantity: 1,
       unitPrice: 500,
-      vatPercent: 19,
+      vatPercent: 21,
     },
   ],
 
@@ -81,7 +81,7 @@ const xml = Invoice.buildXml({
 
   invoiceSeries: "ABC", // Invoice prefix
   dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-  defaultVatPercent: 19, // Default VAT for lines without vatPercent
+  defaultVatPercent: 21, // Default VAT for lines without vatPercent
   paymentIban: "RO49AAAA1B31007593840000",
   note: "Mulțumim pentru colaborare!",
 
@@ -121,7 +121,7 @@ Returns the UBL 2.1 XML string directly.
 
 | Code | Description                   |
 | ---- | ----------------------------- |
-| `S`  | Standard rate (e.g., 19% VAT) |
+| `S`  | Standard rate (e.g., 21% VAT) |
 | `Z`  | Zero rated                    |
 | `E`  | Exempt from VAT               |
 | `AE` | VAT Reverse Charge            |
@@ -150,7 +150,7 @@ const creditNote = Invoice.buildXml({
     name: "Returned product",
     quantity: -1,  // Negative for credits
     unitPrice: 500,
-    vatPercent: 19,
+    vatPercent: 21,
   }],
 });
 ```
@@ -198,7 +198,7 @@ const invoice = Invoice.buildXml({
       reasonCode: "95",
       amount: 100,
       taxCategoryCode: "S",
-      vatPercent: 19,
+      vatPercent: 21,
     },
     // Document-level surcharge
     {
@@ -207,7 +207,7 @@ const invoice = Invoice.buildXml({
       reasonCode: "FC",
       amount: 50,
       taxCategoryCode: "S",
-      vatPercent: 19,
+      vatPercent: 21,
     },
   ],
 });
@@ -217,47 +217,47 @@ const invoice = Invoice.buildXml({
 
 ### Required Fields
 
-| Field           | Type                 | Description                          |
-| --------------- | -------------------- | ------------------------------------ |
-| `invoiceNumber` | `string`             | Invoice number/ID                    |
-| `issueDate`     | `Date \| string`     | Issue date                           |
+| Field           | Type                 | Description                               |
+| --------------- | -------------------- | ----------------------------------------- |
+| `invoiceNumber` | `string`             | Invoice number/ID                         |
+| `issueDate`     | `Date \| string`     | Issue date                                |
 | `seller`        | `Seller`             | Seller info (name, CUI, vatCode, address) |
-| `buyer`         | `Buyer`              | Buyer info (name, CUI, address)      |
-| `lines`         | `InvoiceLineInput[]` | At least one line item               |
+| `buyer`         | `Buyer`              | Buyer info (name, CUI, address)           |
+| `lines`         | `InvoiceLineInput[]` | At least one line item                    |
 
 ### Optional Fields
 
-| Field                        | Type                 | Default      | Description              |
-| ---------------------------- | -------------------- | ------------ | ------------------------ |
-| `invoiceSeries`              | `string`             | -            | Invoice prefix           |
-| `dueDate`                    | `Date \| string`     | issueDate    | Payment due date         |
-| `invoiceTypeCode`            | `string`             | `"380"`      | Invoice type             |
-| `currencyCode`               | `string`             | `"RON"`      | Currency                 |
-| `defaultVatPercent`          | `number`             | `0`          | Default VAT for lines    |
-| `note`                       | `string`             | -            | Invoice note             |
-| `paymentIban`                | `string`             | -            | Shortcut for bank transfer |
-| `paymentMeans`               | `PaymentMeans`       | -            | Full payment config      |
-| `paymentTerms`               | `PaymentTerms`       | -            | Payment terms            |
-| `buyerReference`             | `string`             | -            | Buyer's reference        |
-| `taxPointDate`               | `Date \| string`     | -            | VAT point date           |
-| `orderReference`             | `DocumentReference`  | -            | Purchase order ref       |
-| `contractReference`          | `DocumentReference`  | -            | Contract ref             |
-| `invoicePeriod`              | `InvoicePeriod`      | -            | Billing period           |
-| `allowanceCharges`           | `AllowanceCharge[]`  | -            | Discounts/surcharges     |
-| `precedingInvoiceReferences` | `DocumentReference[]`| -            | For credit notes         |
+| Field                        | Type                  | Default   | Description                |
+| ---------------------------- | --------------------- | --------- | -------------------------- |
+| `invoiceSeries`              | `string`              | -         | Invoice prefix             |
+| `dueDate`                    | `Date \| string`      | issueDate | Payment due date           |
+| `invoiceTypeCode`            | `string`              | `"380"`   | Invoice type               |
+| `currencyCode`               | `string`              | `"RON"`   | Currency                   |
+| `defaultVatPercent`          | `number`              | `0`       | Default VAT for lines      |
+| `note`                       | `string`              | -         | Invoice note               |
+| `paymentIban`                | `string`              | -         | Shortcut for bank transfer |
+| `paymentMeans`               | `PaymentMeans`        | -         | Full payment config        |
+| `paymentTerms`               | `PaymentTerms`        | -         | Payment terms              |
+| `buyerReference`             | `string`              | -         | Buyer's reference          |
+| `taxPointDate`               | `Date \| string`      | -         | VAT point date             |
+| `orderReference`             | `DocumentReference`   | -         | Purchase order ref         |
+| `contractReference`          | `DocumentReference`   | -         | Contract ref               |
+| `invoicePeriod`              | `InvoicePeriod`       | -         | Billing period             |
+| `allowanceCharges`           | `AllowanceCharge[]`   | -         | Discounts/surcharges       |
+| `precedingInvoiceReferences` | `DocumentReference[]` | -         | For credit notes           |
 
 ### Line Item Fields
 
-| Field             | Type     | Required | Description                    |
-| ----------------- | -------- | -------- | ------------------------------ |
-| `name`            | `string` | ✓        | Item/service name              |
-| `quantity`        | `number` | ✓        | Quantity                       |
-| `unitPrice`       | `number` | ✓        | Unit price (excl. VAT)         |
-| `vatPercent`      | `number` | -        | VAT % (uses default if omitted)|
-| `unitCode`        | `string` | -        | Unit code (default: "EA")      |
-| `description`     | `string` | -        | Item description               |
-| `sellerItemId`    | `string` | -        | Seller's item code             |
-| `taxCategoryCode` | `string` | -        | Tax category (auto-determined) |
+| Field             | Type     | Required | Description                     |
+| ----------------- | -------- | -------- | ------------------------------- |
+| `name`            | `string` | ✓        | Item/service name               |
+| `quantity`        | `number` | ✓        | Quantity                        |
+| `unitPrice`       | `number` | ✓        | Unit price (excl. VAT)          |
+| `vatPercent`      | `number` | -        | VAT % (uses default if omitted) |
+| `unitCode`        | `string` | -        | Unit code (default: "EA")       |
+| `description`     | `string` | -        | Item description                |
+| `sellerItemId`    | `string` | -        | Seller's item code              |
+| `taxCategoryCode` | `string` | -        | Tax category (auto-determined)  |
 
 ## Utility Functions
 

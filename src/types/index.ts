@@ -87,7 +87,7 @@ export interface InvoiceLineInput {
   unitCode?: UnitCode;
   /** Unit price excluding VAT */
   unitPrice: number;
-  /** VAT percentage (e.g., 19 for 19%) - if not provided, will use invoice default or 0 */
+  /** VAT percentage (e.g., 21 for 21%) - if not provided, will use invoice default or 0 */
   vatPercent?: number;
   /** Tax category code - auto-determined if not provided */
   taxCategoryCode?: TaxCategoryCode;
@@ -311,7 +311,7 @@ export interface InvoiceConfig {
 
   /**
    * Default VAT percentage for lines without explicit vatPercent
-   * @example 19 (for 19% VAT)
+   * @example 21 (for 21% VAT)
    * @default 0
    */
   defaultVatPercent?: number;
@@ -379,20 +379,7 @@ export interface InvoiceConfig {
   /**
    * Document-level discounts and surcharges
    * - chargeIndicator: false = discount, true = surcharge
-   * @example [{ chargeIndicator: false, reason: "10% discount", amount: 100, vatPercent: 19 }]
+   * @example [{ chargeIndicator: false, reason: "10% discount", amount: 100, vatPercent: 21 }]
    */
   allowanceCharges?: AllowanceCharge[];
 }
-
-// =============================================================================
-// Re-exports for convenience
-// =============================================================================
-
-export type {
-  InvoiceTypeCode,
-  TaxCategoryCode,
-  TaxDueCode,
-  PaymentMeansCode,
-  TaxExemptionCode,
-  UnitCode,
-} from "../utils/codes";

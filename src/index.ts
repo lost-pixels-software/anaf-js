@@ -13,7 +13,7 @@
  *   issueDate: new Date(),
  *   seller: { ... },
  *   buyer: { ... },
- *   lines: [{ name: 'Product', quantity: 1, unitPrice: 100, vatPercent: 19 }],
+ *   lines: [{ name: 'Product', quantity: 1, unitPrice: 100, vatPercent: 21 }],
  * });
  * ```
  */
@@ -44,15 +44,17 @@ export type {
   AllowanceCharge,
   InvoicePeriod,
   DocumentReference,
+} from "./types";
 
-  // Code types
+// Code types - exported directly from source to ensure proper .d.ts resolution
+export type {
   InvoiceTypeCode,
   TaxCategoryCode,
   TaxDueCode,
   PaymentMeansCode,
   TaxExemptionCode,
   UnitCode,
-} from "./types";
+} from "./utils/codes";
 
 // Utility functions
 export {

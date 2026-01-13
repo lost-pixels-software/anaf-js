@@ -61,7 +61,7 @@ const DEFAULT_TAX_SCHEME = "VAT";
  *   issueDate: new Date(),
  *   seller: { ... },
  *   buyer: { ... },
- *   lines: [{ name: "Service", quantity: 1, unitPrice: 100, vatPercent: 19 }],
+ *   lines: [{ name: "Service", quantity: 1, unitPrice: 100, vatPercent: 21 }],
  * });
  * ```
  */
