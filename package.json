@@ -6,7 +6,9 @@
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "sideEffects": false,
   "exports": {
+    "./package.json": "./package.json",
     ".": {
       "import": {
         "types": "./dist/index.d.ts",
@@ -27,7 +29,7 @@
     "build": "bun run build:esm && bun run build:cjs && bun run build:types",
     "build:esm": "bun build ./src/index.ts --outdir ./dist --target browser --format esm",
     "build:cjs": "bun build ./src/index.ts --outfile ./dist/index.cjs --target browser --format cjs",
-    "build:types": "tsc --project tsconfig.build.json && cp dist/index.d.ts dist/index.d.cts",
+    "build:types": "tsc && cp dist/index.d.ts dist/index.d.cts",
     "example": "bun run src/example.ts",
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "bun run build"

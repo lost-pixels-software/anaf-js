@@ -120,7 +120,10 @@ function validateConfig(config: InvoiceConfig): void {
   }
 
   for (let i = 0; i < config.lines.length; i++) {
-    validateLine(config.lines[i], i);
+    const line = config.lines[i];
+    if (line) {
+      validateLine(line, i);
+    }
   }
 }
 
