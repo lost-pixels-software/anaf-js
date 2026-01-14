@@ -334,7 +334,7 @@ export interface AnafApiResponseRaw {
   cod: number;
   message: string;
   found: AnafFoundCompanyRaw[];
-  notFound: Array<{ cui: number }>;
+  notFound: number[];
 }
 
 // =============================================================================

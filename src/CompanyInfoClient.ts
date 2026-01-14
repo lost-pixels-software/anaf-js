@@ -74,6 +74,23 @@ export class CompanyInfoClient {
   }
 
   /**
+   * Normalize postal code by padding with leading zero if needed
+   */
+  private normalizePostalCode(postalCode?: string): string {
+    if (!postalCode) return "";
+    const clean = postalCode.trim();
+    if (!clean) return "";
+
+    // ANAF sometimes returns postal codes with 5 digits (omitting leading zero)
+    // Bucharest postal codes starting with 0 are often affected
+    if (clean.length < 6 && /^\d+$/.test(clean)) {
+      return clean.padStart(6, "0");
+    }
+
+    return clean;
+  }
+
+  /**
    * Transform raw ANAF response to our format
    */
   private transformCompany(raw: AnafFoundCompanyRaw): CompanyData {
@@ -85,7 +102,7 @@ export class CompanyInfoClient {
       registrationNumber: raw.date_generale.nrRegCom,
       phone: raw.date_generale.telefon,
       fax: raw.date_generale.fax,
-      postalCode: raw.date_generale.codPostal,
+      postalCode: this.normalizePostalCode(raw.date_generale.codPostal),
       document: raw.date_generale.act,
       registrationStatus: raw.date_generale.stare_inregistrare,
       registrationDate: raw.date_generale.data_inregistrare,
@@ -141,7 +158,7 @@ export class CompanyInfoClient {
       countyShort: raw.adresa_sediu_social.scod_JudetAuto,
       country: raw.adresa_sediu_social.stara,
       details: raw.adresa_sediu_social.sdetalii_Adresa,
-      postalCode: raw.adresa_sediu_social.scod_Postal,
+      postalCode: this.normalizePostalCode(raw.adresa_sediu_social.scod_Postal),
     };
 
     const fiscalAddress: FiscalAddress = {
@@ -154,7 +171,9 @@ export class CompanyInfoClient {
       countyShort: raw.adresa_domiciliu_fiscal.dcod_JudetAuto,
       country: raw.adresa_domiciliu_fiscal.dtara,
       details: raw.adresa_domiciliu_fiscal.ddetalii_Adresa,
-      postalCode: raw.adresa_domiciliu_fiscal.dcod_Postal,
+      postalCode: this.normalizePostalCode(
+        raw.adresa_domiciliu_fiscal.dcod_Postal
+      ),
     };
 
     return {
@@ -238,8 +257,8 @@ export class CompanyInfoClient {
 
       // Process not found
       if (response.data.notFound && response.data.notFound.length > 0) {
-        for (const item of response.data.notFound) {
-          notFound.push(item.cui);
+        for (const cui of response.data.notFound) {
+          notFound.push(cui);
         }
       }
 

@@ -13,9 +13,9 @@ async function main() {
   const client = new CompanyInfoClient();
 
   // Single company lookup
-  console.log("🔍 Looking up company RO18189442...\n");
+  console.log("🔍 Looking up company RO52179481...\n");
 
-  const result = await client.getCompanyData("RO18189442");
+  const result = await client.getCompanyData("52179481");
 
   if (result.success && result.data) {
     const company = result.data[0];
@@ -45,6 +45,8 @@ async function main() {
     );
     console.log(`   Inactive: ${company.inactiveState.status ? "Yes" : "No"}`);
     console.log(`   Split VAT: ${company.splitVat.status ? "Yes" : "No"}`);
+
+    console.log(company);
   } else {
     console.log("❌ Company not found:", result.error);
   }
@@ -53,9 +55,9 @@ async function main() {
   console.log("\n\n🔍 Batch lookup (multiple companies)...\n");
 
   const batchResult = await client.batchGetCompanyData([
-    "RO18189442", // Bitdefender
-    "RO14399840", // UiPath
-    "RO99999999", // Invalid - should be in notFound
+    "RO52179481", // Lost Pixels Software SRL
+    "RO14774435", // UP ROMANIA SRL
+    "RO52179480", // Invalid - should be in notFound
   ]);
 
   if (batchResult.success && batchResult.data) {
