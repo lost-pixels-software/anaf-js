@@ -10,6 +10,7 @@ import { AnafValidationError, AnafNotFoundError } from "./shared/errors";
 import { COMPANY_INFO_URL, DEFAULT_TIMEOUT } from "./shared/constants";
 import type {
   CompanyData,
+  CompaniesResult,
   CompanyResult,
   GeneralData,
   HqAddress,
@@ -194,7 +195,33 @@ export class CompanyInfoClient {
    * @param date - Optional date for historical lookup (YYYY-MM-DD)
    */
   async getCompanyData(vatCode: string, date?: string): Promise<CompanyResult> {
-    return this.batchGetCompanyData([vatCode], date);
+    const result = await this.batchGetCompanyData([vatCode], date);
+
+    if (!result.success) {
+      return {
+        success: false,
+        error: result.error,
+      };
+    }
+
+    if (result.notFound && result.notFound.length > 0) {
+      return {
+        success: false,
+        error: "Company not found",
+      };
+    }
+
+    if (result.data && result.data.length > 0) {
+      return {
+        success: true,
+        data: result.data[0],
+      };
+    }
+
+    return {
+      success: false,
+      error: "Unexpected empty result",
+    };
   }
 
   /**
@@ -206,7 +233,7 @@ export class CompanyInfoClient {
   async batchGetCompanyData(
     vatCodes: string[],
     date?: string
-  ): Promise<CompanyResult> {
+  ): Promise<CompaniesResult> {
     // Validation
     if (!vatCodes || vatCodes.length === 0) {
       return { success: false, error: "No VAT codes provided" };

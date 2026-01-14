@@ -112,6 +112,7 @@ export type {
 
 export type {
   CompanyData,
+  CompaniesResult,
   CompanyResult,
   GeneralData,
   HqAddress,

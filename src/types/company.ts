@@ -342,15 +342,27 @@ export interface AnafApiResponseRaw {
 // =============================================================================
 
 /**
- * Company lookup result
+ * Multiple companies lookup result
  */
-export interface CompanyResult {
+export interface CompaniesResult {
   /** Whether the lookup was successful */
   success: boolean;
   /** Found companies */
   data?: CompanyData[];
   /** Companies not found (CUI numbers) */
   notFound?: number[];
+  /** Error message */
+  error?: string;
+}
+
+/**
+ * Single company lookup result
+ */
+export interface CompanyResult {
+  /** Whether the lookup was successful */
+  success: boolean;
+  /** Found company data */
+  data?: CompanyData;
   /** Error message */
   error?: string;
 }

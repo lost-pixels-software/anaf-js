@@ -18,7 +18,7 @@ async function main() {
   const result = await client.getCompanyData("52179481");
 
   if (result.success && result.data) {
-    const company = result.data[0];
+    const company = result.data;
 
     console.log("✅ Company found:\n");
     console.log("📋 General Data:");
