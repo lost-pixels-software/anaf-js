@@ -10,7 +10,7 @@ import {
   AnafValidationError,
   AnafApiError,
   AnafAuthenticationError,
-} from "./errors";
+} from "./shared/errors";
 import {
   getBasePath,
   UPLOAD_PATH,
@@ -22,7 +22,7 @@ import {
   VALIDATE_XML_PATH,
   XML_TO_PDF_PATH,
   DEFAULT_TIMEOUT,
-} from "./constants";
+} from "./shared/constants";
 import { AnafAuthenticator, type StoredCredentials } from "./AnafAuthenticator";
 import type {
   EfacturaClientConfig,

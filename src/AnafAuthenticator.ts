@@ -2,12 +2,12 @@
  * ANAF OAuth 2.0 Authenticator
  */
 
-import { AnafAuthenticationError, AnafValidationError } from "./errors";
+import { AnafAuthenticationError, AnafValidationError } from "./shared/errors";
 import {
   OAUTH_AUTHORIZE_URL,
   OAUTH_TOKEN_URL,
   DEFAULT_TIMEOUT,
-} from "./constants";
+} from "./shared/constants";
 import { HttpClient } from "./utils/http-client";
 
 export interface AnafAuthConfig {

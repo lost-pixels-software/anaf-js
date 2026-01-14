@@ -6,8 +6,8 @@
  */
 
 import { HttpClient } from "./utils/http-client";
-import { AnafValidationError, AnafNotFoundError } from "./errors";
-import { COMPANY_INFO_URL, DEFAULT_TIMEOUT } from "./constants";
+import { AnafValidationError, AnafNotFoundError } from "./shared/errors";
+import { COMPANY_INFO_URL, DEFAULT_TIMEOUT } from "./shared/constants";
 import type {
   CompanyData,
   CompanyResult,

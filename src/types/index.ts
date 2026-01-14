@@ -12,7 +12,7 @@ import type {
   PaymentMeansCode,
   TaxExemptionCode,
   UnitCode,
-} from "../utils/codes";
+} from "./codes";
 
 // =============================================================================
 // Address Types

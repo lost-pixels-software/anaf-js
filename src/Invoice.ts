@@ -15,11 +15,10 @@ import type {
   PaymentMeans,
   AllowanceCharge,
   InvoiceConfig,
-  DocumentReference,
   InvoicePeriod,
 } from "./types";
 
-import { type TaxCategoryCode, type TaxExemptionCode } from "./utils/codes";
+import { type TaxCategoryCode, type TaxExemptionCode } from "./types/codes";
 
 import { formatDate } from "./utils/format-date";
 import {

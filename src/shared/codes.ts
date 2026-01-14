@@ -1,10 +1,9 @@
 /**
- * CIUS-RO Compliant Codes for Romanian e-Invoicing
+ * CIUS-RO Compliant Code Constants for Romanian e-Invoicing
  *
  * Reference: https://mfinante.gov.ro/static/10/eFactura/
  *
- * All code types use the `as const` pattern with derived types via `keyof typeof`
- * to provide better IDE autocomplete and "Go to Definition" support.
+ * All code constants use the `as const` pattern to provide better IDE autocomplete.
  */
 
 // =============================================================================
@@ -19,8 +18,6 @@ export const InvoiceTypeCodes = {
   "751":
     "Invoice information for accounting purposes (Factură - informații în scopuri contabile)",
 } as const;
-
-export type InvoiceTypeCode = keyof typeof InvoiceTypeCodes;
 
 // =============================================================================
 // Tax Category Codes (UNCL5305)
@@ -37,8 +34,6 @@ export const TaxCategoryCodes = {
   L: "Canary Islands general indirect tax (IGIC)",
   M: "Tax for production, services and importation (IPSI)",
 } as const;
-
-export type TaxCategoryCode = keyof typeof TaxCategoryCodes;
 
 // =============================================================================
 // Tax Exemption Reason Codes (VATEX)
@@ -104,8 +99,6 @@ export const TaxExemptionCodes = {
   "VATEX-EU-O": "Not subject to VAT",
 } as const;
 
-export type TaxExemptionCode = keyof typeof TaxExemptionCodes;
-
 // =============================================================================
 // Tax Due Codes (UNCL2005)
 // =============================================================================
@@ -115,8 +108,6 @@ export const TaxDueCodes = {
   "35": "Actual delivery date (Data reală a livrării)",
   "432": "Paid amount on that date (Suma plătită în acea zi)",
 } as const;
-
-export type TaxDueCode = keyof typeof TaxDueCodes;
 
 // =============================================================================
 // Payment Means Codes (UNCL4461)
@@ -208,8 +199,6 @@ export const PaymentMeansCodes = {
   ZZZ: "Mutually defined (Altă metodă - definită reciproc)",
 } as const;
 
-export type PaymentMeansCode = keyof typeof PaymentMeansCodes;
-
 // =============================================================================
 // Unit Codes (UN/ECE Recommendation 20)
 // =============================================================================
@@ -234,8 +223,6 @@ export const CommonUnitCodes = {
   XPK: "Package (Pachet)",
   XBX: "Box (Cutie)",
 } as const;
-
-export type UnitCode = keyof typeof CommonUnitCodes;
 
 // =============================================================================
 // Romanian County Codes (ISO 3166-2:RO)
@@ -286,8 +273,6 @@ export const RomanianCountyCodes = {
   "RO-VN": "Vrancea",
 } as const;
 
-export type RomanianCountyCode = keyof typeof RomanianCountyCodes;
-
 // =============================================================================
 // Bucharest Sectors
 // =============================================================================
@@ -300,5 +285,3 @@ export const BucharestSectors = [
   "SECTOR5",
   "SECTOR6",
 ] as const;
-
-export type BucharestSector = (typeof BucharestSectors)[number];

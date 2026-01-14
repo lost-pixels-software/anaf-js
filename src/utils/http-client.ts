@@ -2,8 +2,8 @@
  * HTTP Client using native fetch
  */
 
-import { AnafApiError } from "../errors";
-import { DEFAULT_TIMEOUT } from "../constants";
+import { AnafApiError } from "../shared/errors";
+import { DEFAULT_TIMEOUT } from "../shared/constants";
 
 export interface HttpClientConfig {
   timeout?: number;

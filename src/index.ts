@@ -54,7 +54,7 @@ export {
   AnafApiError,
   AnafAuthenticationError,
   AnafNotFoundError,
-} from "./errors";
+} from "./shared/errors";
 
 // =============================================================================
 // OAuth & Credentials Utilities
@@ -104,7 +104,7 @@ export type {
   PaymentMeansCode,
   TaxExemptionCode,
   UnitCode,
-} from "./utils/codes";
+} from "./types/codes";
 
 // =============================================================================
 // Company Types
@@ -201,11 +201,11 @@ export {
   // Romanian county codes
   RomanianCountyCodes,
   BucharestSectors,
-} from "./utils/codes";
+} from "./shared/codes";
 
 export {
   getBasePath,
   DEFAULT_TIMEOUT,
   DEFAULT_CURRENCY,
   DEFAULT_COUNTRY_CODE,
-} from "./constants";
+} from "./shared/constants";

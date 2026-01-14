@@ -5,11 +5,8 @@
  * especially for Bucharest sectors and county codes.
  */
 
-import {
-  BucharestSectors,
-  type BucharestSector,
-  type RomanianCountyCode,
-} from "./codes";
+import { BucharestSectors } from "../shared/codes";
+import type { BucharestSector, RomanianCountyCode } from "../types/codes";
 
 /**
  * Check if a county code represents Bucharest
