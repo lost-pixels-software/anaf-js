@@ -23,7 +23,7 @@ import { type TaxCategoryCode, type TaxExemptionCode } from "./types/codes";
 import { formatDate } from "./utils/format-date";
 import {
   isBucharest,
-  sanitizeBucharestSector,
+  sanitizeCity,
   sanitizeCounty,
   normalizeVatNumber,
 } from "./utils/address-sanitizer";
@@ -586,7 +586,7 @@ function addParty(
   const address = party.address;
   const county = sanitizeCounty(address.countrySubentity);
   const city = isBucharest(county)
-    ? sanitizeBucharestSector(address.cityName)
+    ? sanitizeCity(address.cityName)
     : address.cityName;
 
   // Postal Address

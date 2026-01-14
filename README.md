@@ -359,13 +359,13 @@ import {
   formatDate,
   normalizeVatNumber,
   sanitizeCounty,
-  sanitizeBucharestSector,
+  sanitizeCity,
 } from "anaf-js";
 
 formatDate(new Date()); // "2024-01-15"
 normalizeVatNumber("12345678"); // "RO12345678"
 sanitizeCounty("Cluj"); // "RO-CJ"
-sanitizeBucharestSector("Sector 1"); // "SECTOR1"
+sanitizeCity("Sector 1"); // "SECTOR1"
 ```
 
 ## Available Constants

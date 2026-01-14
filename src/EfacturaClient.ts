@@ -6,6 +6,7 @@
  */
 
 import { HttpClient } from "./utils/http-client";
+import { parseUploadResponse, parseStatusResponse } from "./utils/xml-parser";
 import {
   AnafValidationError,
   AnafApiError,
@@ -13,6 +14,7 @@ import {
 } from "./shared/errors";
 import {
   getBasePath,
+  BASE_PATH_OAUTH_PROD,
   UPLOAD_PATH,
   UPLOAD_B2C_PATH,
   STATUS_MESSAGE_PATH,
@@ -138,15 +140,20 @@ export class EfacturaClient {
     const headers = await this.getAuthHeaders();
 
     try {
-      const response = await this.httpClient.postXml<UploadResponseRaw>(
-        url,
-        xmlContent,
-        {
-          headers,
-        }
-      );
+      const response = await this.httpClient.postXml<
+        UploadResponseRaw | string
+      >(url, xmlContent, {
+        headers,
+      });
 
-      return this.transformUploadResponse(response.data);
+      let rawData: UploadResponseRaw;
+      if (typeof response.data === "string") {
+        rawData = parseUploadResponse(response.data);
+      } else {
+        rawData = response.data;
+      }
+
+      return this.transformUploadResponse(rawData);
     } catch (error) {
       if (error instanceof AnafApiError && error.statusCode === 401) {
         throw new AnafAuthenticationError(
@@ -180,15 +187,20 @@ export class EfacturaClient {
     const headers = await this.getAuthHeaders();
 
     try {
-      const response = await this.httpClient.postXml<UploadResponseRaw>(
-        url,
-        xmlContent,
-        {
-          headers,
-        }
-      );
+      const response = await this.httpClient.postXml<
+        UploadResponseRaw | string
+      >(url, xmlContent, {
+        headers,
+      });
 
-      return this.transformUploadResponse(response.data);
+      let rawData: UploadResponseRaw;
+      if (typeof response.data === "string") {
+        rawData = parseUploadResponse(response.data);
+      } else {
+        rawData = response.data;
+      }
+
+      return this.transformUploadResponse(rawData);
     } catch (error) {
       if (error instanceof AnafApiError && error.statusCode === 401) {
         throw new AnafAuthenticationError(
@@ -228,14 +240,24 @@ export class EfacturaClient {
     const headers = await this.getAuthHeaders();
 
     try {
-      const response = await this.httpClient.get<StatusResponseRaw>(url, {
-        headers,
-      });
+      const response = await this.httpClient.get<StatusResponseRaw | string>(
+        url,
+        {
+          headers,
+        }
+      );
+
+      let rawData: StatusResponseRaw;
+      if (typeof response.data === "string") {
+        rawData = parseStatusResponse(response.data);
+      } else {
+        rawData = response.data;
+      }
 
       return {
-        status: response.data.stare as UploadStatusValue | undefined,
-        downloadId: response.data.id_descarcare,
-        errors: response.data.Errors?.map((e) => e.errorMessage),
+        status: rawData.stare as UploadStatusValue | undefined,
+        downloadId: rawData.id_descarcare,
+        errors: rawData.Errors?.map((e) => e.errorMessage),
       };
     } catch (error) {
       if (error instanceof AnafApiError && error.statusCode === 401) {
@@ -394,6 +416,7 @@ export class EfacturaClient {
 
   /**
    * Validate XML document
+   * Note: Validation endpoint only exists in PROD (no test environment)
    */
   async validateXml(
     xmlContent: string,
@@ -403,13 +426,15 @@ export class EfacturaClient {
       throw new AnafValidationError("XML content is required");
     }
 
-    // Validation endpoint is public, doesn't require auth
-    const url = `https://api.anaf.ro/prod/FCTEL/rest${VALIDATE_XML_PATH}/${standard}`;
+    // Validation endpoint only exists in PROD, requires text/plain Content-Type
+    const url = `${BASE_PATH_OAUTH_PROD}${VALIDATE_XML_PATH}/${standard}`;
+    const headers = await this.getAuthHeaders();
 
     try {
-      const response = await this.httpClient.postXml<ValidationResponseRaw>(
+      const response = await this.httpClient.postText<ValidationResponseRaw>(
         url,
-        xmlContent
+        xmlContent,
+        { headers }
       );
 
       const isValid = response.data.stare === "ok";
@@ -427,6 +452,7 @@ export class EfacturaClient {
 
   /**
    * Convert XML to PDF
+   * Note: Transformation endpoint only exists in PROD (no test environment)
    */
   async xmlToPdf(
     xmlContent: string,
@@ -437,23 +463,30 @@ export class EfacturaClient {
       throw new AnafValidationError("XML content is required");
     }
 
-    const validatePath = validate ? "/DA" : "";
-    // xmlToPdf endpoint is public
-    const url = `https://api.anaf.ro/prod/FCTEL/rest${XML_TO_PDF_PATH}/${standard}${validatePath}`;
+    // If validate is false, use /DA to skip validation
+    const noValidatePath = validate ? "" : "/DA";
+
+    // Transformation endpoint only exists in PROD, requires text/plain Content-Type
+    const url = `${BASE_PATH_OAUTH_PROD}${XML_TO_PDF_PATH}/${standard}${noValidatePath}`;
+    const headers = await this.getAuthHeaders();
 
     try {
+      console.log(`[HttpClient] POST ${url}`);
       const response = await fetch(url, {
         method: "POST",
         headers: {
-          "Content-Type": "application/xml",
+          "Content-Type": "text/plain",
+          ...headers,
         },
         body: xmlContent,
       });
 
       if (!response.ok) {
+        const errorText = await response.text().catch(() => "Unknown error");
         throw new AnafApiError(
-          `XML to PDF conversion failed: ${response.status}`,
-          response.status
+          `XML to PDF conversion failed: ${response.status}: ${errorText}`,
+          response.status,
+          errorText
         );
       }
 

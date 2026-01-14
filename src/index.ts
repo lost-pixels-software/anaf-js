@@ -174,7 +174,7 @@ export {
 
 export {
   isBucharest,
-  sanitizeBucharestSector,
+  sanitizeCity,
   sanitizeCounty,
   normalizeVatNumber,
 } from "./utils/address-sanitizer";

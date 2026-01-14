@@ -24,14 +24,12 @@ export function isBucharest(county: string): boolean {
 }
 
 /**
- * Sanitize a Bucharest sector name to CIUS-RO format
- * Converts variations like "Sector 1", "S1", "Sectorul 1" to "SECTOR1"
+ * Sanitize a city/sector name to CIUS-RO format
+ * For Bucharest, converts variations like "Sector 1", "S1", "Sectorul 1" to "SECTOR1"
  * @param city - City/sector name
- * @returns Sanitized sector name
+ * @returns Sanitized city/sector name
  */
-export function sanitizeBucharestSector(
-  city: string
-): BucharestSector | string {
+export function sanitizeCity(city: string): BucharestSector | string {
   const normalized = city.toUpperCase().trim();
 
   // Already in correct format

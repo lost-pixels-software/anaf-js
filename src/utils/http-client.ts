@@ -152,6 +152,52 @@ export class HttpClient {
   }
 
   /**
+   * POST request with plain text body (for ANAF validation endpoints)
+   */
+  async postText<T>(
+    url: string,
+    textContent: string,
+    options: RequestOptions = {}
+  ): Promise<HttpResponse<T>> {
+    const fullUrl = this.buildUrl(url);
+    const timeout = options.timeout ?? this.timeout;
+
+    const response = await this.fetchWithTimeout(
+      fullUrl,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "text/plain",
+          ...options.headers,
+        },
+        body: textContent,
+      },
+      timeout
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => "Unknown error");
+      throw new AnafApiError(
+        `HTTP ${response.status}: ${errorText}`,
+        response.status,
+        errorText
+      );
+    }
+
+    // Try to parse as JSON first, fall back to text
+    const contentType = response.headers.get("content-type") || "";
+    let data: T;
+
+    if (contentType.includes("application/json")) {
+      data = (await response.json()) as T;
+    } else {
+      data = (await response.text()) as unknown as T;
+    }
+
+    return { data, status: response.status, headers: response.headers };
+  }
+
+  /**
    * POST request with form-urlencoded body
    */
   async postForm<T>(
