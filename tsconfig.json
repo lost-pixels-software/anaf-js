@@ -19,14 +19,6 @@
     /* Module & Resolution (for bundler-based builds) */
     "module": "esnext",
     "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
-
-    /* Type Declaration Output */
-    "declaration": true,
-    "declarationMap": true,
-    "emitDeclarationOnly": true,
-    "outDir": "dist",
-    "rootDir": "src",
 
     /* Environment */
     "lib": ["ESNext"],

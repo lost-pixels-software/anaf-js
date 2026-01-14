@@ -3,16 +3,16 @@
   "version": "0.1.1",
   "description": "A comprehensive TypeScript library for the Romanian ANAF e-Factura system.",
   "type": "module",
-  "main": "./dist/index.js",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
   "sideEffects": false,
   "exports": {
     "./package.json": "./package.json",
     ".": {
       "import": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/index.js"
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
       },
       "require": {
         "types": "./dist/index.d.cts",
@@ -26,10 +26,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "bun run build:esm && bun run build:cjs && bun run build:types",
-    "build:esm": "bun build ./src/index.ts --outdir ./dist --target browser --format esm",
-    "build:cjs": "bun build ./src/index.ts --outfile ./dist/index.cjs --target browser --format cjs",
-    "build:types": "tsc && cp dist/index.d.ts dist/index.d.cts",
+    "build": "tsdown",
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "bun run build"
   },
@@ -59,6 +56,7 @@
   },
   "devDependencies": {
     "@types/bun": "latest",
+    "tsdown": "^0.20.0-beta.3",
     "typescript": "^5.0.0"
   },
   "dependencies": {
