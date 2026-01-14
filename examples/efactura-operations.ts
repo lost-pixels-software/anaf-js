@@ -16,8 +16,6 @@ import {
   hasValidCredentials,
   MessageFilter,
   type InvoiceConfig,
-  sanitizeCity,
-  sanitizeCounty,
 } from "../src";
 import { writeFileSync } from "fs";
 
@@ -65,8 +63,8 @@ async function main() {
       vatCode: "RO52179481",
       address: {
         streetName: "Str. Test",
-        cityName: sanitizeCity("Sector 3"),
-        countrySubentity: sanitizeCounty("Bucuresti"),
+        cityName: "Sector 3",
+        countrySubentity: "Bucuresti",
       },
     },
     buyer: {
@@ -75,8 +73,8 @@ async function main() {
       vatCode: "RO52179481",
       address: {
         streetName: "Str. Negru Voda",
-        cityName: sanitizeCity("Curtea de Arges"),
-        countrySubentity: sanitizeCounty("Arges"),
+        cityName: "Curtea de Arges",
+        countrySubentity: "Arges",
       },
     },
     lines: [
