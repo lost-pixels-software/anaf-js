@@ -48,6 +48,16 @@ const batch = await client.batchGetCompanyData(["RO123", "RO456"]);
 
 ### OAuth Authentication
 
+#### Local Development & Testing
+
+When testing locally, the internal OAuth server listens on `localhost:3000` by default. However, ANAF requires a public HTTPS URL for redirects.
+
+You do **not** need to change the local server configuration. Instead:
+
+1. Use a tool like **ngrok** to forward traffic: `ngrok http 3000`.
+2. Set the `redirectUri` in your `.env` (and in the ANAF portal) to your ngrok URL (e.g., `https://xxxx.ngrok-free.app/callback`).
+3. The internal server will automatically handle the callback on `localhost:3000`.
+
 ```typescript
 import { AnafAuthenticator, runOAuthFlow, saveCredentials } from "anaf-js";
 

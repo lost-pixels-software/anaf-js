@@ -4,7 +4,7 @@
  * Example: OAuth Authentication Flow
  *
  * This example shows how to authenticate with ANAF using OAuth 2.0.
- * You'll need valid ANAF SPV credentials (client ID and secret).
+ * You'll need valid ANAF SPV credentials from anaf.ro - "autentificare utilizator" (client ID and secret).
  *
  * Run with: bun examples/oauth-flow.ts
  */
@@ -46,7 +46,6 @@ async function main() {
     console.log("   export ANAF_CLIENT_ID='your-client-id'");
     console.log("   export ANAF_CLIENT_SECRET='your-client-secret'");
     console.log("   export ANAF_REDIRECT_URI='http://localhost:3000/callback'");
-    console.log("\n   Or edit the config in this file.");
     return;
   }
 
