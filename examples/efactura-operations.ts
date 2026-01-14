@@ -11,6 +11,7 @@
 
 import {
   EfacturaClient,
+  AnafAuthenticator,
   Invoice,
   loadCredentials,
   hasValidCredentials,
@@ -18,6 +19,12 @@ import {
   type InvoiceConfig,
 } from "../src";
 import { writeFileSync } from "fs";
+
+// Your OAuth credentials from ANAF SPV
+const CLIENT_ID = process.env.ANAF_CLIENT_ID || "";
+const CLIENT_SECRET = process.env.ANAF_CLIENT_SECRET || "";
+const REDIRECT_URI =
+  process.env.ANAF_REDIRECT_URI || "http://localhost:3000/callback";
 
 // Your company VAT number
 const VAT_NUMBER = process.env.ANAF_VAT_NUMBER || "RO12345678";
@@ -33,17 +40,35 @@ async function main() {
     return;
   }
 
+  if (!CLIENT_ID || !CLIENT_SECRET) {
+    console.log(
+      "❌ Missing ANAF_CLIENT_ID or ANAF_CLIENT_SECRET env variables."
+    );
+    console.log("   These are required for automatic token refresh.");
+    return;
+  }
+
   const creds = loadCredentials()!;
   console.log("✅ Credentials loaded from token.secret file\n");
 
-  // Create e-Factura client
-  const client = new EfacturaClient({
-    vatNumber: VAT_NUMBER,
-    testMode: TEST_MODE,
-    accessToken: creds.accessToken,
-    refreshToken: creds.refreshToken,
-    expiresAt: creds.expiresAt,
+  // Create authenticator for token refresh
+  const authenticator = new AnafAuthenticator({
+    clientId: CLIENT_ID,
+    clientSecret: CLIENT_SECRET,
+    redirectUri: REDIRECT_URI,
   });
+
+  // Create e-Factura client with authenticator for auto token refresh
+  const client = new EfacturaClient(
+    {
+      vatNumber: VAT_NUMBER,
+      testMode: TEST_MODE,
+      accessToken: creds.accessToken,
+      refreshToken: creds.refreshToken,
+      expiresAt: creds.expiresAt,
+    },
+    authenticator
+  );
 
   console.log(`📋 Using VAT: ${VAT_NUMBER}`);
   console.log(`🔧 Mode: ${TEST_MODE ? "TEST" : "PRODUCTION"}\n`);

@@ -1,4 +1,9 @@
-import { EfacturaClient, loadCredentials, hasValidCredentials } from "../src";
+import {
+  EfacturaClient,
+  AnafAuthenticator,
+  loadCredentials,
+  hasValidCredentials,
+} from "../src";
 import { writeFileSync } from "fs";
 
 // ===========================================================================
@@ -8,6 +13,12 @@ import { writeFileSync } from "fs";
 const UPLOAD_INDEX = "5029597395";
 const VAT_NUMBER = process.env.ANAF_VAT_NUMBER || "RO12345678";
 const TEST_MODE = true;
+
+// OAuth credentials for token refresh
+const CLIENT_ID = process.env.ANAF_CLIENT_ID || "";
+const CLIENT_SECRET = process.env.ANAF_CLIENT_SECRET || "";
+const REDIRECT_URI =
+  process.env.ANAF_REDIRECT_URI || "http://localhost:3000/callback";
 // ===========================================================================
 
 async function main() {
@@ -20,17 +31,34 @@ async function main() {
     return;
   }
 
+  if (!CLIENT_ID || !CLIENT_SECRET) {
+    console.log(
+      "❌ Missing ANAF_CLIENT_ID or ANAF_CLIENT_SECRET env variables."
+    );
+    return;
+  }
+
   const creds = loadCredentials()!;
   console.log("✅ Credentials loaded\n");
 
-  // Create e-Factura client
-  const client = new EfacturaClient({
-    vatNumber: VAT_NUMBER,
-    testMode: TEST_MODE,
-    accessToken: creds.accessToken,
-    refreshToken: creds.refreshToken,
-    expiresAt: creds.expiresAt,
+  // Create authenticator for token refresh
+  const authenticator = new AnafAuthenticator({
+    clientId: CLIENT_ID,
+    clientSecret: CLIENT_SECRET,
+    redirectUri: REDIRECT_URI,
   });
+
+  // Create e-Factura client with authenticator
+  const client = new EfacturaClient(
+    {
+      vatNumber: VAT_NUMBER,
+      testMode: TEST_MODE,
+      accessToken: creds.accessToken,
+      refreshToken: creds.refreshToken,
+      expiresAt: creds.expiresAt,
+    },
+    authenticator
+  );
 
   console.log(`📋 Checking Upload Index: ${UPLOAD_INDEX}`);
   console.log(`   VAT: ${VAT_NUMBER}`);

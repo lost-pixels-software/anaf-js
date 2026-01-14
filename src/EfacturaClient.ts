@@ -56,9 +56,9 @@ export class EfacturaClient {
   private accessToken: string;
   private refreshToken: string;
   private expiresAt: number;
-  private authenticator?: AnafAuthenticator;
+  private readonly authenticator: AnafAuthenticator;
 
-  constructor(config: EfacturaClientConfig, authenticator?: AnafAuthenticator) {
+  constructor(config: EfacturaClientConfig, authenticator: AnafAuthenticator) {
     this.validateConfig(config);
 
     this.config = config;
@@ -79,7 +79,7 @@ export class EfacturaClient {
    */
   private async getAuthHeaders(): Promise<Record<string, string>> {
     // Check if token needs refresh
-    if (this.authenticator && this.expiresAt > 0) {
+    if (this.expiresAt > 0) {
       const bufferMs = 60000; // 1 minute buffer
       if (Date.now() >= this.expiresAt - bufferMs) {
         try {

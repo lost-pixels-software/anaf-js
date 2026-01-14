@@ -98,8 +98,16 @@ const batch = await client.batchGetCompanyData(["RO123", "RO456"]);
 #### e-Factura Operations (Requires OAuth)
 
 ```typescript
-import { EfacturaClient, Invoice, loadCredentials } from "anaf-js";
+import { EfacturaClient, AnafAuthenticator, Invoice, loadCredentials } from "anaf-js";
 
+// Create authenticator for automatic token refresh
+const authenticator = new AnafAuthenticator({
+  clientId: process.env.ANAF_CLIENT_ID,
+  clientSecret: process.env.ANAF_CLIENT_SECRET,
+  redirectUri: "https://myapp.com/callback",
+});
+
+// Create client - authenticator is required for automatic token refresh
 const client = new EfacturaClient({
   vatNumber: "RO12345678",
   // Recommended to set to true in development
@@ -107,7 +115,7 @@ const client = new EfacturaClient({
   // You should get these credentials from your database after the auth flow
   accessToken: accessToken,
   refreshToken: refreshToken,
-});
+}, authenticator);
 
 // Generate and upload invoice
 const xml = Invoice.buildXml({ ... });
