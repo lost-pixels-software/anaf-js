@@ -1,13 +1,18 @@
 /**
  * ANAF e-Factura Library
  *
- * A simple library for generating CIUS-RO compliant invoices
- * for the Romanian ANAF e-Factura system.
+ * A comprehensive TypeScript library for the Romanian ANAF e-Factura system.
+ * Features:
+ * - Invoice XML generation (CIUS-RO compliant)
+ * - OAuth 2.0 authentication
+ * - Company info lookup
+ * - e-Factura API operations
  *
  * @example
  * ```typescript
- * import { Invoice, type InvoiceConfig } from 'anaf-js';
+ * import { Invoice, CompanyInfoClient, EfacturaClient } from 'anaf-js';
  *
+ * // Generate invoice XML
  * const xml = Invoice.buildXml({
  *   invoiceNumber: '2024-001',
  *   issueDate: new Date(),
@@ -15,13 +20,58 @@
  *   buyer: { ... },
  *   lines: [{ name: 'Product', quantity: 1, unitPrice: 100, vatPercent: 21 }],
  * });
+ *
+ * // Lookup company info (no auth required)
+ * const companyClient = new CompanyInfoClient();
+ * const companyData = await companyClient.getCompanyData('RO12345678');
+ *
+ * // Upload invoice to ANAF (requires OAuth)
+ * const efacturaClient = new EfacturaClient({
+ *   vatNumber: 'RO12345678',
+ *   accessToken: '...',
+ *   refreshToken: '...',
+ * });
+ * const uploadResult = await efacturaClient.uploadDocument(xml);
  * ```
  */
 
-// Main Invoice class
-export { Invoice } from "./Invoice";
+// =============================================================================
+// Main Classes
+// =============================================================================
 
-// Types
+export { Invoice } from "./Invoice";
+export { CompanyInfoClient } from "./CompanyInfoClient";
+export { EfacturaClient } from "./EfacturaClient";
+export { AnafAuthenticator } from "./AnafAuthenticator";
+
+// =============================================================================
+// Errors
+// =============================================================================
+
+export {
+  AnafError,
+  AnafValidationError,
+  AnafApiError,
+  AnafAuthenticationError,
+  AnafNotFoundError,
+} from "./errors";
+
+// =============================================================================
+// OAuth & Credentials Utilities
+// =============================================================================
+
+export { startAuthServer, runOAuthFlow } from "./utils/auth-server";
+export {
+  loadCredentials,
+  saveCredentials,
+  hasValidCredentials,
+  clearCredentials,
+} from "./utils/credentials";
+
+// =============================================================================
+// Invoice Types
+// =============================================================================
+
 export type {
   // Address & Party types
   Address,
@@ -46,7 +96,7 @@ export type {
   DocumentReference,
 } from "./types";
 
-// Code types - exported directly from source to ensure proper .d.ts resolution
+// Code types
 export type {
   InvoiceTypeCode,
   TaxCategoryCode,
@@ -56,7 +106,65 @@ export type {
   UnitCode,
 } from "./utils/codes";
 
-// Utility functions
+// =============================================================================
+// Company Types
+// =============================================================================
+
+export type {
+  CompanyData,
+  CompanyResult,
+  GeneralData,
+  HqAddress,
+  FiscalAddress,
+  VatRegistration,
+  VatAtCheckout,
+  InactiveState,
+  SplitVat,
+  VatPeriod,
+} from "./types/company";
+
+// =============================================================================
+// e-Factura Types
+// =============================================================================
+
+export type {
+  EfacturaClientConfig,
+  UploadOptions,
+  UploadResponse,
+  StatusResponse,
+  Message,
+  ListMessagesParams,
+  ListMessagesResponse,
+  PaginatedMessagesParams,
+  PaginatedMessagesResponse,
+  ValidationResult,
+} from "./types/efactura";
+
+export {
+  ExecutionStatus,
+  UploadStatusValue,
+  MessageFilter,
+} from "./types/efactura";
+
+export type { UploadStandard, ValidationStandard } from "./types/efactura";
+
+// =============================================================================
+// Auth Types
+// =============================================================================
+
+export type {
+  AnafAuthConfig,
+  AuthUrlSettings,
+  TokenResponse,
+  StoredCredentials,
+} from "./AnafAuthenticator";
+
+export type { CompanyInfoConfig } from "./CompanyInfoClient";
+
+// =============================================================================
+// Utility Functions
+// =============================================================================
+
 export {
   formatDate,
   isValidDateFormat,
@@ -73,27 +181,31 @@ export {
 
 export { roundMoney } from "./utils/currency";
 
-// Code constants and helpers
+// =============================================================================
+// Constants
+// =============================================================================
+
 export {
   // Invoice type codes
   InvoiceTypeCodes,
-
   // Tax category codes
   TaxCategoryCodes,
-
   // Tax exemption codes
   TaxExemptionCodes,
-
   // Tax due codes
   TaxDueCodes,
-
   // Payment means codes
   PaymentMeansCodes,
-
   // Unit codes
   CommonUnitCodes,
-
   // Romanian county codes
   RomanianCountyCodes,
   BucharestSectors,
 } from "./utils/codes";
+
+export {
+  getBasePath,
+  DEFAULT_TIMEOUT,
+  DEFAULT_CURRENCY,
+  DEFAULT_COUNTRY_CODE,
+} from "./constants";

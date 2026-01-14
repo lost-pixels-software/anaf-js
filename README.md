@@ -1,16 +1,15 @@
 # anaf-js
 
-A TypeScript/JavaScript library for generating **CIUS-RO compliant** UBL 2.1 invoices for the Romanian ANAF e-Factura system.
+A comprehensive TypeScript library for the Romanian ANAF e-Factura system.
 
 ## Features
 
-- ✅ **CIUS-RO Compliant** - Generates XML invoices that pass ANAF validation
-- ✅ **Automatic Calculations** - VAT, totals, and tax subtotals computed automatically
-- ✅ **Type-Safe** - TypeScript enforces required fields at compile time
-- ✅ **Simple API** - One method: `Invoice.buildXml(config)`
-- ✅ **Full Invoice Types** - Commercial invoices, credit notes, self-invoices
-- ✅ **VAT Categories** - Standard, zero-rated, exempt, reverse charge
-- ✅ **Address Sanitization** - Auto-formats Bucharest sectors and county codes
+- ✅ **Invoice XML Generation** - CIUS-RO compliant UBL 2.1 invoices
+- ✅ **Company Info Lookup** - Public ANAF API (no auth required)
+- ✅ **e-Factura API** - Upload, download, validate, messages
+- ✅ **OAuth 2.0 Authentication** - Full OAuth flow with Bun server
+- ✅ **Type-Safe** - Full TypeScript support
+- ✅ **Zero External HTTP Dependencies** - Uses native `fetch`
 
 ## Installation
 
@@ -19,6 +18,90 @@ bun add anaf-js
 # or
 npm install anaf-js
 ```
+
+---
+
+## ANAF API Usage
+
+### Company Info Lookup (No Auth Required)
+
+```typescript
+import { CompanyInfoClient } from "anaf-js";
+
+const client = new CompanyInfoClient();
+
+// Single company
+const result = await client.getCompanyData("RO12345678");
+
+if (result.success) {
+  const company = result.data[0];
+  console.log(company.generalData.companyName);
+  console.log(company.hqAddress); // HQ address
+  console.log(company.fiscalAddress); // Fiscal address
+  console.log(company.vatRegistration); // VAT status
+  console.log(company.generalData.eFacturaStatus); // e-Factura enrollment
+}
+
+// Batch lookup (max 100)
+const batch = await client.batchGetCompanyData(["RO123", "RO456"]);
+```
+
+### OAuth Authentication
+
+```typescript
+import { AnafAuthenticator, runOAuthFlow, saveCredentials } from "anaf-js";
+
+const auth = new AnafAuthenticator({
+  clientId: "your-client-id",
+  clientSecret: "your-client-secret",
+  redirectUri: "http://localhost:3000/callback",
+});
+
+// Generate auth URL and run OAuth flow
+const url = auth.getAuthorizationUrl();
+const { code } = await runOAuthFlow(url, { port: 3000 });
+
+// Exchange code for tokens
+const tokens = await auth.exchangeCodeForToken(code);
+saveCredentials(AnafAuthenticator.toStoredCredentials(tokens));
+```
+
+### e-Factura Operations (Requires OAuth)
+
+```typescript
+import { EfacturaClient, Invoice, loadCredentials } from "anaf-js";
+
+const creds = loadCredentials();
+const client = new EfacturaClient({
+  vatNumber: "RO12345678",
+  testMode: true,
+  accessToken: creds.accessToken,
+  refreshToken: creds.refreshToken,
+});
+
+// Generate and upload invoice
+const xml = Invoice.buildXml({ ... });
+const upload = await client.uploadDocument(xml);
+
+// Check status
+const status = await client.getStatusMessage(upload.uploadIndex);
+
+// Download result
+const file = await client.downloadDocument(status.downloadId);
+
+// List messages
+const messages = await client.getMessages({ days: 7 });
+
+// Validate XML (no auth required)
+const validation = await client.validateXml(xml);
+
+// Convert to PDF
+const pdf = await client.xmlToPdf(xml);
+```
+
+---
+
+## Invoice XML Generation
 
 ## Quick Start
 
