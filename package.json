@@ -30,7 +30,6 @@
     "build:esm": "bun build ./src/index.ts --outdir ./dist --target browser --format esm",
     "build:cjs": "bun build ./src/index.ts --outfile ./dist/index.cjs --target browser --format cjs",
     "build:types": "tsc && cp dist/index.d.ts dist/index.d.cts",
-    "example": "bun run src/example.ts",
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "bun run build"
   },
@@ -48,13 +47,13 @@
     "romanian",
     "einvoice"
   ],
-  "author": "",
+  "author": "Lost Pixels Software SRL",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": ""
+    "url": "https://github.com/lost-pixels-software/anaf-js.git"
   },
-  "homepage": "",
+  "homepage": "https://github.com/lost-pixels/anaf-js",
   "engines": {
     "node": ">=18"
   },
