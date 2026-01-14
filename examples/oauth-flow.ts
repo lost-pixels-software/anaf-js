@@ -30,7 +30,7 @@ async function main() {
 
   // Check if we already have valid credentials
   if (hasValidCredentials()) {
-    console.log("✅ Valid credentials found in .secret file");
+    console.log("✅ Valid credentials found in token.secret file");
     const creds = loadCredentials();
     console.log(
       `   Access token expires: ${new Date(creds!.expiresAt).toISOString()}`
@@ -78,7 +78,7 @@ async function main() {
         storedCredentials.expiresAt
       ).toISOString()}`
     );
-    console.log("   Credentials saved to .secret file");
+    console.log("   Credentials saved to token.secret file");
   } catch (error) {
     console.error("\n❌ Authentication failed:", error);
   }

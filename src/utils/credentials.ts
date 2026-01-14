@@ -8,7 +8,7 @@ import { existsSync, readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 import type { StoredCredentials } from "../AnafAuthenticator";
 
-const DEFAULT_SECRET_FILE = ".secret";
+const DEFAULT_SECRET_FILE = "token.secret";
 
 export interface CredentialsConfig {
   /** Path to the credentials file */

@@ -34,7 +34,7 @@ async function main() {
   }
 
   const creds = loadCredentials()!;
-  console.log("✅ Credentials loaded from .secret file\n");
+  console.log("✅ Credentials loaded from token.secret file\n");
 
   // Create e-Factura client
   const client = new EfacturaClient({
