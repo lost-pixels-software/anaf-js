@@ -1,7 +1,7 @@
 {
   "name": "anaf-js",
-  "version": "0.1.0",
-  "description": "CIUS-RO compliant e-Invoice generator for Romanian ANAF e-Factura system",
+  "version": "0.1.1",
+  "description": "A comprehensive TypeScript library for the Romanian ANAF e-Factura system.",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
