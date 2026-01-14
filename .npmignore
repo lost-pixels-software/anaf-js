@@ -1,4 +1,5 @@
 # Source files (dist is published)
+assets/
 src/
 tsconfig.json
 tsconfig.build.json
