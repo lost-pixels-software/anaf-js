@@ -64,7 +64,7 @@ export function saveCredentials(
 }
 
 /**
- * Check if credentials exist and are not expired
+ * Check if credentials exist and are usable (not expired or have refresh token)
  */
 export function hasValidCredentials(config: CredentialsConfig = {}): boolean {
   const credentials = loadCredentials(config);
@@ -72,7 +72,12 @@ export function hasValidCredentials(config: CredentialsConfig = {}): boolean {
     return false;
   }
 
-  // Check if expired (with 1 minute buffer)
+  // If we have a refresh token, we can always refresh the access token
+  if (credentials.refreshToken) {
+    return true;
+  }
+
+  // Otherwise check if expired (with 1 minute buffer)
   const bufferMs = 60 * 1000;
   return Date.now() < credentials.expiresAt - bufferMs;
 }

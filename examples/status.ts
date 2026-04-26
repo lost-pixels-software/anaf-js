@@ -3,8 +3,10 @@ import {
   AnafAuthenticator,
   loadCredentials,
   hasValidCredentials,
+  saveCredentials,
 } from "../src";
-import { writeFileSync } from "fs";
+import { writeFileSync, mkdirSync } from "fs";
+import { join } from "path";
 
 // ===========================================================================
 // CONFIGURATION
@@ -33,7 +35,7 @@ async function main() {
 
   if (!CLIENT_ID || !CLIENT_SECRET) {
     console.log(
-      "❌ Missing ANAF_CLIENT_ID or ANAF_CLIENT_SECRET env variables."
+      "❌ Missing ANAF_CLIENT_ID or ANAF_CLIENT_SECRET env variables.",
     );
     return;
   }
@@ -56,8 +58,11 @@ async function main() {
       accessToken: creds.accessToken,
       refreshToken: creds.refreshToken,
       expiresAt: creds.expiresAt,
+      onTokenRefresh: (newCreds) => {
+        saveCredentials(newCreds);
+      },
     },
-    authenticator
+    authenticator,
   );
 
   console.log(`📋 Checking Upload Index: ${UPLOAD_INDEX}`);
@@ -72,15 +77,26 @@ async function main() {
       console.log(`   Errors: ${status.errors.join(", ")}`);
     }
 
+    if (status.status !== "ok") {
+      console.log(
+        `   Document is not ready for download yet: ${status.status}`,
+      );
+      return;
+    }
+
     if (status.downloadId) {
       console.log(`   ✅ Download ID: ${status.downloadId}`);
       console.log(`   ⬇️  Downloading document...`);
 
       const docBuffer = await client.downloadDocument(status.downloadId);
-      const filename = `document_${UPLOAD_INDEX}.zip`;
+      const outputDir = join(process.cwd(), "downloads");
+      mkdirSync(outputDir, { recursive: true });
 
-      writeFileSync(filename, Buffer.from(docBuffer));
-      console.log(`   ✅ Saved to ${filename}`);
+      const filename = `document_${UPLOAD_INDEX}.zip`;
+      const filePath = join(outputDir, filename);
+
+      writeFileSync(filePath, Buffer.from(docBuffer));
+      console.log(`   ✅ Saved to ${filePath}`);
       console.log(`   Size: ${docBuffer.byteLength} bytes`);
     } else {
       console.log("   ⏳ Document is not ready for download yet.");

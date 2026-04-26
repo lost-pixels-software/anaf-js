@@ -364,6 +364,12 @@ function generateXml(config: InvoiceConfig): string {
   // Currency
   root.ele("cbc:DocumentCurrencyCode").txt(currency).up();
 
+  // CIUS-RO BR-RO-030: when invoice currency is not RON, accounting currency
+  // must also be stated so ANAF can record VAT amounts in RON.
+  if (currency !== DEFAULT_CURRENCY) {
+    root.ele("cbc:TaxCurrencyCode").txt(DEFAULT_CURRENCY).up();
+  }
+
   // Buyer reference
   if (config.buyerReference) {
     root.ele("cbc:BuyerReference").txt(config.buyerReference).up();
@@ -475,6 +481,18 @@ function generateXml(config: InvoiceConfig): string {
     subtotalEl.up();
   }
   taxTotalEl.up();
+
+  // BR-53 / BT-111: when TaxCurrencyCode (BT-6) is present, emit a second
+  // TaxTotal with the total VAT amount in the accounting currency (RON).
+  // No subtotals are required in this second element.
+  if (currency !== DEFAULT_CURRENCY && config.taxCurrencyTaxAmount !== undefined) {
+    root
+      .ele("cac:TaxTotal")
+      .ele("cbc:TaxAmount", { currencyID: DEFAULT_CURRENCY })
+      .txt(config.taxCurrencyTaxAmount.toFixed(2))
+      .up()
+      .up();
+  }
 
   // Monetary totals
   const mtEl = root.ele("cac:LegalMonetaryTotal");
@@ -589,6 +607,14 @@ function addParty(
     ? sanitizeCity(address.cityName)
     : address.cityName;
 
+  // Party Name — required by UBL 2.1 schema before PostalAddress
+  partyEl
+    .ele("cac:PartyName")
+    .ele("cbc:Name")
+    .txt(party.registrationName)
+    .up()
+    .up();
+
   // Postal Address
   const postalAddress = partyEl.ele("cac:PostalAddress");
   postalAddress.ele("cbc:StreetName").txt(address.streetName).up();
@@ -613,19 +639,25 @@ function addParty(
     .up();
   postalAddress.up();
 
-  // Party Tax Scheme
+  // Party Tax Scheme — only emitted when the party has a VAT registration.
+  // Omitting this block entirely for non-VAT payers avoids emitting an invalid
+  // empty <cac:TaxScheme/> element which triggers ANAF BR-RO warnings.
   const vatCode = isSeller
     ? (party as Seller).vatCode
     : (party as Buyer).vatCode;
-  const taxScheme = partyEl.ele("cac:PartyTaxScheme");
   if (vatCode) {
-    taxScheme.ele("cbc:CompanyID").txt(normalizeVatNumber(vatCode)).up();
-    taxScheme.ele("cac:TaxScheme").ele("cbc:ID").txt("VAT").up().up();
-  } else {
-    taxScheme.ele("cbc:CompanyID").txt(party.registrationCode).up();
-    taxScheme.ele("cac:TaxScheme").up();
+    partyEl
+      .ele("cac:PartyTaxScheme")
+      .ele("cbc:CompanyID")
+      .txt(normalizeVatNumber(vatCode))
+      .up()
+      .ele("cac:TaxScheme")
+      .ele("cbc:ID")
+      .txt("VAT")
+      .up()
+      .up()
+      .up();
   }
-  taxScheme.up();
 
   // Party Legal Entity
   const legalEntity = partyEl.ele("cac:PartyLegalEntity");

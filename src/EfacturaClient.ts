@@ -5,8 +5,14 @@
  * Requires OAuth authentication.
  */
 
+import { unzipSync } from "fflate";
 import { HttpClient } from "./utils/http-client";
-import { parseUploadResponse, parseStatusResponse } from "./utils/xml-parser";
+import {
+  parseUploadResponse,
+  parseStatusResponse,
+  extractXmlErrors,
+} from "./utils/xml-parser";
+import { parseMessageDetails } from "./utils/message-parser";
 import {
   AnafValidationError,
   AnafApiError,
@@ -26,11 +32,13 @@ import {
   DEFAULT_TIMEOUT,
 } from "./shared/constants";
 import { AnafAuthenticator, type StoredCredentials } from "./AnafAuthenticator";
+import { UploadStatusValue } from "./types/efactura";
 import type {
   EfacturaClientConfig,
   UploadOptions,
   UploadResponse,
   StatusResponse,
+  UploadStatusResult,
   Message,
   ListMessagesParams,
   ListMessagesResponse,
@@ -43,7 +51,6 @@ import type {
   PaginatedMessagesResponseRaw,
   ValidationResponseRaw,
   ExecutionStatus,
-  UploadStatusValue,
 } from "./types/efactura";
 
 /**
@@ -89,7 +96,18 @@ export class EfacturaClient {
           this.accessToken = tokens.access_token;
           this.refreshToken = tokens.refresh_token;
           this.expiresAt = Date.now() + tokens.expires_in * 1000;
+
           console.log("🔄 Access token refreshed");
+
+          // Trigger refresh callback if provided
+          if (this.config.onTokenRefresh) {
+            const newCreds = this.getCredentials();
+            await Promise.resolve(this.config.onTokenRefresh(newCreds)).catch(
+              (err) => {
+                console.warn("⚠️ onTokenRefresh callback failed:", err);
+              }
+            );
+          }
         } catch (error) {
           throw new AnafAuthenticationError(
             `Failed to refresh token: ${
@@ -125,6 +143,12 @@ export class EfacturaClient {
   ): Promise<UploadResponse> {
     if (!xmlContent?.trim()) {
       throw new AnafValidationError("XML content is required");
+    }
+
+    if (options.standard && !["UBL", "CN", "CII", "RASP"].includes(options.standard)) {
+      throw new AnafValidationError(
+        "Standard must be one of: UBL, CN, CII, RASP"
+      );
     }
 
     const params = new URLSearchParams({
@@ -173,6 +197,12 @@ export class EfacturaClient {
   ): Promise<UploadResponse> {
     if (!xmlContent?.trim()) {
       throw new AnafValidationError("XML content is required");
+    }
+
+    if (options.standard && !["UBL", "CN", "CII", "RASP"].includes(options.standard)) {
+      throw new AnafValidationError(
+        "Standard must be one of: UBL, CN, CII, RASP"
+      );
     }
 
     const params = new URLSearchParams({
@@ -270,9 +300,13 @@ export class EfacturaClient {
   }
 
   /**
-   * Download processed document
+   * Download processed document as a raw ZIP buffer.
+   *
+   * ANAF returns a ZIP archive containing the processed XML (and signature).
+   * Use `getUploadStatus` for a higher-level API that handles the full
+   * status → download → error-extraction flow automatically.
    */
-  async downloadDocument(downloadId: string): Promise<ArrayBuffer> {
+  async downloadDocument(downloadId: string): Promise<Buffer> {
     if (!downloadId?.trim()) {
       throw new AnafValidationError("Download ID is required");
     }
@@ -285,10 +319,7 @@ export class EfacturaClient {
     const headers = await this.getAuthHeaders();
 
     try {
-      const response = await this.httpClient.getBuffer(
-        `${this.basePath}${url}`,
-        { headers }
-      );
+      const response = await this.httpClient.getBuffer(url, { headers });
       return response.data;
     } catch (error) {
       if (error instanceof AnafApiError && error.statusCode === 401) {
@@ -298,6 +329,56 @@ export class EfacturaClient {
       }
       throw error;
     }
+  }
+
+  /**
+   * Combined status check + download + error extraction.
+   *
+   * Orchestrates the full post-upload flow:
+   * 1. Checks the upload status via `getStatusMessage`.
+   * 2. If still processing (`in prelucrare`), returns status immediately.
+   * 3. If done, downloads the ZIP archive from ANAF.
+   * 4. If the upload failed (`nok`), unzips the archive and extracts any
+   *    error messages from the ANAF response XML file inside it.
+   *
+   * @param uploadId - The upload index returned by `uploadDocument`
+   * @returns Status with optional `data` (ZIP buffer) and enriched `errors`
+   */
+  async getUploadStatus(uploadId: string): Promise<UploadStatusResult> {
+    const status = await this.getStatusMessage(uploadId);
+
+    // Still processing or no download ID yet — nothing to download
+    if (!status.downloadId) {
+      return status;
+    }
+
+    const zipBuffer = await this.downloadDocument(status.downloadId);
+
+    // On failure, try to extract the ANAF error message from inside the ZIP
+    if (status.status === UploadStatusValue.Failed) {
+      try {
+        const files = unzipSync(zipBuffer);
+        const xmlData = files[`${uploadId}.xml`];
+        if (xmlData) {
+          const xmlContent = Buffer.from(xmlData).toString("utf-8");
+          const xmlErrors = extractXmlErrors(xmlContent);
+          if (xmlErrors.length > 0) {
+            return {
+              ...status,
+              errors: [
+                ...(status.errors ?? []),
+                ...xmlErrors.map((e) => e.errorMessage),
+              ],
+              data: zipBuffer,
+            };
+          }
+        }
+      } catch {
+        // ZIP parsing failure is non-fatal — return what we have
+      }
+    }
+
+    return { ...status, data: zipBuffer };
   }
 
   // ===========================================================================
@@ -350,6 +431,14 @@ export class EfacturaClient {
   async getMessagesPaginated(
     params: PaginatedMessagesParams
   ): Promise<PaginatedMessagesResponse> {
+    if (params.endTime <= params.startTime) {
+      throw new AnafValidationError("End time must be after start time");
+    }
+
+    if (typeof params.page !== "number" || params.page < 1) {
+      throw new AnafValidationError("Page number must be 1 or greater");
+    }
+
     const urlParams = new URLSearchParams({
       cif: this.getCleanVatNumber(),
       startTime: params.startTime.toString(),
@@ -400,6 +489,7 @@ export class EfacturaClient {
     detalii: string;
     cif: string;
   }): Message {
+    const parsed = parseMessageDetails(raw.detalii);
     return {
       solicitationId: raw.id_solicitare,
       type: raw.tip,
@@ -407,6 +497,10 @@ export class EfacturaClient {
       id: raw.id,
       details: raw.detalii,
       cif: raw.cif,
+      // Fields parsed from the detalii string
+      uploadIndex: parsed.uploadIndex,
+      cifEmitent: parsed.cifEmitent,
+      cifBeneficiar: parsed.cifBeneficiar,
     };
   }
 

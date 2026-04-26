@@ -133,6 +133,7 @@ export type {
   UploadOptions,
   UploadResponse,
   StatusResponse,
+  UploadStatusResult,
   Message,
   ListMessagesParams,
   ListMessagesResponse,
@@ -181,6 +182,11 @@ export {
 } from "./utils/address-sanitizer";
 
 export { roundMoney } from "./utils/currency";
+
+export { parseMessageDetails } from "./utils/message-parser";
+export type { ParsedMessageDetails } from "./utils/message-parser";
+
+export { enrichMessagesWithCompanyNames } from "./utils/message-enricher";
 
 // =============================================================================
 // Constants

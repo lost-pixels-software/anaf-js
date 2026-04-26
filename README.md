@@ -14,15 +14,18 @@
 
 ## About the project
 
-The library helps you integrate the Romanian ANAF e-Factura system into your application. From authentication to invoice generation and eFactura management, it provides a set of tools to make the process as simple as possible. We've tried to make it as complete and as easy to use as possible but also unopinionated.
+The library helps you integrate the Romanian ANAF e-Factura system into your application. From authentication to invoice generation and e-Factura management, it provides a complete set of tools to make the process as simple as possible while staying unopinionated about your architecture.
 
 ## Features
 
-- **Invoice XML Generation** - CIUS-RO compliant UBL 2.1 invoices
-- **Company Info Lookup** - Public ANAF API (no auth required)
-- **e-Factura API** - Upload, download, validate, messages
-- **OAuth 2.0 Authentication** - Full OAuth flow support
-- **Type-Safe** - Full TypeScript support
+- **Invoice XML Generation** — CIUS-RO compliant UBL 2.1 invoices with automatic VAT, totals, and allowance/charge calculations
+- **Company Info Lookup** — Public ANAF API (no auth required), single or batch
+- **e-Factura API** — Upload, status, download, validation, PDF conversion, message listing
+- **Combined Upload Status** — Single call to check status, download the ZIP, and extract ANAF error messages automatically
+- **Message Enrichment** — Parse structured fields from ANAF message details and resolve emitter company names via batch lookup
+- **OAuth 2.0 Authentication** — Full OAuth flow with automatic token refresh
+- **Non-RON Currency Support** — CIUS-RO BR-RO-030 compliant tax currency handling
+- **Type-Safe** — Full TypeScript support with strict types throughout
 
 ## Installation
 
@@ -51,14 +54,12 @@ const auth = new AnafAuthenticator({
 // 2. Redirect User to ANAF Login
 const url = auth.getAuthorizationUrl();
 // Use this url to redirect the user to ANAF's login page
-// He will be prompted to login with the usb stick
 
 // 3. Handle Callback and Save Tokens
 app.get("/callback", async (req, res) => {
-  const code = req.query.code; // Get 'code' from query parameters
+  const code = req.query.code;
 
   try {
-    // Exchange the authorization code for access tokens
     const tokens = await auth.exchangeCodeForToken(code);
 
     // Save tokens securely (e.g., in your database)
@@ -85,9 +86,9 @@ const result = await client.getCompanyData("RO12345678");
 if (result.success && result.data) {
   const company = result.data;
   console.log(company.generalData.companyName);
-  console.log(company.hqAddress); // HQ address
-  console.log(company.fiscalAddress); // Fiscal address
-  console.log(company.vatRegistration); // VAT status
+  console.log(company.hqAddress);        // HQ address
+  console.log(company.fiscalAddress);    // Fiscal address
+  console.log(company.vatRegistration);  // VAT status
   console.log(company.generalData.eFacturaStatus); // e-Factura enrollment
 }
 
@@ -98,42 +99,79 @@ const batch = await client.batchGetCompanyData(["RO123", "RO456"]);
 #### e-Factura Operations (Requires OAuth)
 
 ```typescript
-import { EfacturaClient, AnafAuthenticator, Invoice, loadCredentials } from "anaf-js";
+import {
+  EfacturaClient,
+  AnafAuthenticator,
+  Invoice,
+  CompanyInfoClient,
+  enrichMessagesWithCompanyNames,
+  MessageFilter,
+} from "anaf-js";
 
-// Create authenticator for automatic token refresh
 const authenticator = new AnafAuthenticator({
   clientId: process.env.ANAF_CLIENT_ID,
   clientSecret: process.env.ANAF_CLIENT_SECRET,
   redirectUri: "https://myapp.com/callback",
 });
 
-// Create client - authenticator is required for automatic token refresh
 const client = new EfacturaClient({
   vatNumber: "RO12345678",
-  // Recommended to set to true in development
-  testMode: true,
-  // You should get these credentials from your database after the auth flow
-  accessToken: accessToken,
+  testMode: true,             // Set to false in production
+  accessToken: accessToken,   // From your database after OAuth flow
   refreshToken: refreshToken,
+  expiresAt: expiresAt,
+  onTokenRefresh: (newCreds) => {
+    // Save new tokens to your database when automatically refreshed
+    console.log("Tokens refreshed:", newCreds);
+  },
 }, authenticator);
 
-// Generate and upload invoice
+// Generate and upload an invoice
 const xml = Invoice.buildXml({ ... });
 const upload = await client.uploadDocument(xml);
 
-// Check status
-const status = await client.getStatusMessage(upload.uploadIndex);
+// ── Combined status + download + error extraction in one call ──────────────
+// getUploadStatus checks the status, downloads the ZIP when ready, and
+// automatically extracts ANAF error messages from inside the archive if
+// the upload failed.
+const result = await client.getUploadStatus(upload.uploadIndex);
 
-// Download result
-const file = await client.downloadDocument(status.downloadId);
+if (result.status === "ok") {
+  // result.data is the raw ZIP Buffer from ANAF
+  console.log("Processed ZIP:", result.data.byteLength, "bytes");
+} else if (result.status === "nok") {
+  // result.errors includes both the raw XML errors and any message
+  // extracted from the ANAF response file inside the ZIP
+  console.log("Errors:", result.errors);
+} else {
+  console.log("Still processing...");
+}
 
-// List messages
-const messages = await client.getMessages({ days: 7 });
+// ── List messages ──────────────────────────────────────────────────────────
+const messages = await client.getMessages({ days: 7, filter: MessageFilter.InvoiceReceived });
 
-// Validate XML (no auth required)
+// Every message now includes structured fields parsed from the detalii string:
+//   message.uploadIndex  — the upload/request ID (id_incarcare)
+//   message.cifEmitent   — sender's CIF
+//   message.cifBeneficiar — receiver's CIF
+for (const msg of messages.messages ?? []) {
+  console.log(msg.type, msg.cifEmitent, msg.uploadIndex);
+}
+
+// ── Enrich messages with company names ────────────────────────────────────
+// A single batch lookup resolves company names for all emitters at once.
+const companyClient = new CompanyInfoClient();
+const enriched = await enrichMessagesWithCompanyNames(messages, companyClient);
+
+for (const msg of enriched.messages ?? []) {
+  // msg.emitentName is set when the company lookup succeeds
+  console.log(`${msg.emitentName ?? msg.cifEmitent} → ${msg.type}`);
+}
+
+// ── Validate XML ───────────────────────────────────────────────────────────
 const validation = await client.validateXml(xml);
 
-// Convert to PDF
+// ── Convert to PDF ─────────────────────────────────────────────────────────
 const pdf = await client.xmlToPdf(xml);
 ```
 
@@ -144,7 +182,7 @@ import { Invoice } from "anaf-js";
 
 const xml: string = Invoice.buildXml({
   // ═══════════════════════════════════════════════════════════════════════════
-  // REQUIRED - TypeScript will error if you forget these
+  // REQUIRED — TypeScript will error if you forget these
   // ═══════════════════════════════════════════════════════════════════════════
 
   invoiceNumber: "2024-001",
@@ -158,9 +196,9 @@ const xml: string = Invoice.buildXml({
     legalFormData: "Capital social: 200 LEI",
     address: {
       streetName: "Strada Exemplu 10",
-      cityName: "Sector 1", // This gets sanitized to "SECTOR1" if București is the region
-      postalZone: "010101", // Optional
-      countrySubentity: "RO-B", // Works with Bucuresti also because it gets sanitized to "RO-B" automatically
+      cityName: "Sector 1",        // Sanitized to "SECTOR1" when county is București
+      postalZone: "010101",
+      countrySubentity: "RO-B",    // Also accepts "Bucuresti", "Cluj", etc.
     },
   },
 
@@ -171,7 +209,7 @@ const xml: string = Invoice.buildXml({
     address: {
       streetName: "Bulevardul Client 25",
       cityName: "Cluj-Napoca",
-      postalZone: "400001", // Optional
+      postalZone: "400001",
       countrySubentity: "RO-CJ",
     },
   },
@@ -180,9 +218,9 @@ const xml: string = Invoice.buildXml({
     {
       name: "Servicii consultanță",
       quantity: 10,
-      unitCode: "HUR", // Optional: defaults to "EA"
+      unitCode: "HUR",   // Optional: defaults to "EA"
       unitPrice: 150,
-      vatPercent: 21, // Optional: uses defaultVatPercent if omitted
+      vatPercent: 21,    // Optional: uses defaultVatPercent if omitted
     },
     {
       name: "Licență software",
@@ -193,12 +231,12 @@ const xml: string = Invoice.buildXml({
   ],
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // OPTIONAL - Omit any you don't need
+  // OPTIONAL — Omit any you don't need
   // ═══════════════════════════════════════════════════════════════════════════
 
-  invoiceSeries: "ABC", // Invoice prefix
+  invoiceSeries: "ABC",
   dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-  defaultVatPercent: 21, // Default VAT for lines without vatPercent
+  defaultVatPercent: 21,
   paymentIban: "RO49AAAA1B31007593840000",
   note: "Mulțumim pentru colaborare!",
   invoiceTypeCode: "380",             // Default: Commercial Invoice
@@ -220,6 +258,63 @@ const xml: string = Invoice.buildXml({
 ### `Invoice.buildXml(config: InvoiceConfig)`
 
 Returns the UBL 2.1 XML string directly.
+
+### `EfacturaClient`
+
+| Method | Description |
+| --- | --- |
+| `uploadDocument(xml, options?)` | Upload a UBL/CII/CN invoice XML |
+| `uploadB2CDocument(xml, options?)` | Upload a B2C invoice |
+| `getStatusMessage(uploadId)` | Check processing status of an upload |
+| `downloadDocument(downloadId)` | Download the raw ZIP `Buffer` from ANAF |
+| `getUploadStatus(uploadId)` | **Combined**: status + download + error extraction in one call |
+| `getMessages(params)` | List recent messages (up to 60 days) |
+| `getMessagesPaginated(params)` | List messages with date range + pagination |
+| `validateXml(xml, standard?)` | Validate XML against ANAF schema (prod only) |
+| `xmlToPdf(xml, standard?, validate?)` | Convert XML to PDF (prod only) |
+
+### Automatic Token Refresh
+
+The `EfacturaClient` automatically refreshes the access token when it is expired or near expiration (within 1 minute), provided you pass the `authenticator` to the constructor.
+
+To persist the refreshed tokens, use the `onTokenRefresh` callback:
+
+```typescript
+const client = new EfacturaClient({
+  // ...
+  onTokenRefresh: async (newCreds) => {
+    // newCreds: { accessToken, refreshToken, expiresAt, tokenType, scope }
+    await db.saveUserTokens(newCreds);
+  }
+}, authenticator);
+```
+
+### `enrichMessagesWithCompanyNames(response, companyClient)`
+
+Resolves company names for all message emitters in a single batch lookup. The function is generic and works with both `ListMessagesResponse` and `PaginatedMessagesResponse`. Fails gracefully if the lookup fails — the original response is returned unchanged.
+
+```typescript
+import { enrichMessagesWithCompanyNames, CompanyInfoClient } from "anaf-js";
+
+const companyClient = new CompanyInfoClient();
+const messages = await efacturaClient.getMessages({ days: 7 });
+const enriched = await enrichMessagesWithCompanyNames(messages, companyClient);
+
+// enriched.messages[n].emitentName === "Vodafone Romania SRL"
+```
+
+### `parseMessageDetails(detalii)`
+
+Parses the structured fields ANAF embeds inside the `detalii` string of each message. Called automatically by the client — you only need this if you're parsing detalii strings from another source.
+
+```typescript
+import { parseMessageDetails } from "anaf-js";
+
+const parsed = parseMessageDetails(
+  "Factura cu id_incarcare=6185977462 emisa de cif_emitent=38600525 pentru cif_beneficiar=51218787"
+);
+// { uploadIndex: "6185977462", cifEmitent: "38600525", cifBeneficiar: "51218787" }
+```
 
 ## Invoice Types
 
@@ -279,7 +374,7 @@ const invoice = Invoice.buildXml({
   seller: {
     registrationName: "Freelancer PFA",
     registrationCode: "12345678",
-    vatCode: null, // ← Not VAT registered
+    vatCode: null, // ← Not VAT registered — PartyTaxScheme is omitted entirely
     address: { ... },
   },
 
@@ -289,8 +384,28 @@ const invoice = Invoice.buildXml({
     name: "Consulting services",
     quantity: 1,
     unitPrice: 2000,
-    // VAT automatically set to 0 with category 'O'
+    // VAT automatically set to 0 with category "O" (not subject to VAT)
   }],
+});
+```
+
+## Foreign Currency Invoices
+
+When `currencyCode` is not `RON`, the library automatically emits `<cbc:TaxCurrencyCode>RON</cbc:TaxCurrencyCode>` as required by CIUS-RO BR-RO-030. If you also provide `taxCurrencyTaxAmount`, a second `<cac:TaxTotal>` is emitted with the RON-denominated VAT amount (BT-111 / BR-53).
+
+```typescript
+const invoice = Invoice.buildXml({
+  invoiceNumber: "EUR-001",
+  issueDate: new Date(),
+  currencyCode: "EUR",
+
+  // Total VAT in RON (you apply the exchange rate)
+  // Required by CIUS-RO BR-53 when currencyCode is not RON
+  taxCurrencyTaxAmount: 950, // e.g. 190 EUR × 5.0 RON/EUR
+
+  seller: { ... },
+  buyer: { ... },
+  lines: [{ name: "Service", quantity: 1, unitPrice: 1000, vatPercent: 19 }],
 });
 ```
 
@@ -335,12 +450,21 @@ import {
   normalizeVatNumber,
   sanitizeCounty,
   sanitizeCity,
+  parseMessageDetails,
+  enrichMessagesWithCompanyNames,
+  roundMoney,
 } from "anaf-js";
 
-formatDate(new Date()); // "2024-01-15"
-normalizeVatNumber("12345678"); // "RO12345678"
-sanitizeCounty("Cluj"); // "RO-CJ"
-sanitizeCity("Sector 1"); // "SECTOR1"
+formatDate(new Date());           // "2024-01-15"
+normalizeVatNumber("12345678");   // "RO12345678"
+sanitizeCounty("Cluj");           // "RO-CJ"
+sanitizeCity("Sector 1");         // "SECTOR1"
+roundMoney(1.005);                // 1.01
+
+parseMessageDetails(
+  "Factura cu id_incarcare=123 emisa de cif_emitent=456 pentru cif_beneficiar=789"
+);
+// { uploadIndex: "123", cifEmitent: "456", cifBeneficiar: "789" }
 ```
 
 ## Available Constants

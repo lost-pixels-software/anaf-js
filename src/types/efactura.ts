@@ -49,9 +49,7 @@ export enum MessageFilter {
   BuyerMessage = "R",
 }
 
-// =============================================================================
-// Configuration
-// =============================================================================
+import type { StoredCredentials } from "../AnafAuthenticator";
 
 /**
  * e-Factura client configuration
@@ -69,6 +67,8 @@ export interface EfacturaClientConfig {
   refreshToken: string;
   /** Token expiration time (Unix timestamp in ms) */
   expiresAt?: number;
+  /** Callback for when token is refreshed */
+  onTokenRefresh?: (credentials: StoredCredentials) => void | Promise<void>;
 }
 
 // =============================================================================
@@ -119,6 +119,22 @@ export interface StatusResponse {
   errors?: string[];
 }
 
+/**
+ * Combined upload status result returned by `getUploadStatus`.
+ *
+ * Extends StatusResponse with the raw ZIP archive from ANAF.
+ * When processing is complete (status is `ok` or `nok`), `data` contains the
+ * full ZIP buffer. When status is `nok`, any error messages extracted from
+ * the archive are appended to `errors`.
+ */
+export interface UploadStatusResult extends StatusResponse {
+  /**
+   * Raw ZIP archive buffer returned by ANAF after processing.
+   * Present only when `status` is `ok` or `nok` (i.e. not `in prelucrare`).
+   */
+  data?: Buffer;
+}
+
 // =============================================================================
 // Message Types
 // =============================================================================
@@ -135,10 +151,21 @@ export interface Message {
   creationDate: string;
   /** Download ID */
   id: string;
-  /** Message details */
+  /** Raw details string from ANAF */
   details: string;
   /** CIF number */
   cif: string;
+
+  // Fields parsed from the `details` string:
+
+  /** Upload/request ID (parsed from details — id_incarcare) */
+  uploadIndex?: string;
+  /** Emitter CIF (parsed from details — cif_emitent) */
+  cifEmitent?: string;
+  /** Beneficiary CIF (parsed from details — cif_beneficiar) */
+  cifBeneficiar?: string;
+  /** Emitter company name (resolved via CompanyInfoClient batch lookup) */
+  emitentName?: string;
 }
 
 /**

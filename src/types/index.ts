@@ -382,4 +382,24 @@ export interface InvoiceConfig {
    * @example [{ chargeIndicator: false, reason: "10% discount", amount: 100, vatPercent: 21 }]
    */
   allowanceCharges?: AllowanceCharge[];
+
+  // ===========================================================================
+  // OPTIONAL: Foreign Currency Support
+  // ===========================================================================
+
+  /**
+   * Total VAT amount expressed in RON when the invoice currency is not RON.
+   *
+   * Required by CIUS-RO BR-53 / BT-111: when `currencyCode` is not RON, the
+   * standard mandates a second `<cac:TaxTotal>` element that states the total
+   * VAT in the accounting currency (RON). The caller is responsible for
+   * applying the exchange rate and providing the converted amount.
+   *
+   * Only used when `currencyCode` is set to something other than `"RON"`.
+   *
+   * @example
+   * // Invoice in EUR, VAT is 190 EUR = 950 RON at 5.0 exchange rate
+   * taxCurrencyTaxAmount: 950
+   */
+  taxCurrencyTaxAmount?: number;
 }

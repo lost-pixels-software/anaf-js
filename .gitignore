@@ -35,3 +35,6 @@ token.secret
 
 # Finder (MacOS) folder config
 .DS_Store
+
+# Example downloads
+downloads/

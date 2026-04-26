@@ -275,12 +275,12 @@ export class HttpClient {
   }
 
   /**
-   * GET request that returns raw buffer (for file downloads)
+   * GET request that returns a Node.js Buffer (for file downloads)
    */
   async getBuffer(
     url: string,
     options: RequestOptions = {}
-  ): Promise<{ data: ArrayBuffer; status: number; headers: Headers }> {
+  ): Promise<{ data: Buffer; status: number; headers: Headers }> {
     const fullUrl = this.buildUrl(url);
     const timeout = options.timeout ?? this.timeout;
 
@@ -302,7 +302,11 @@ export class HttpClient {
       );
     }
 
-    const data = await response.arrayBuffer();
-    return { data, status: response.status, headers: response.headers };
+    const arrayBuffer = await response.arrayBuffer();
+    return {
+      data: Buffer.from(arrayBuffer),
+      status: response.status,
+      headers: response.headers,
+    };
   }
 }

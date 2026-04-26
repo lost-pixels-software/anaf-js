@@ -12,13 +12,19 @@
 import {
   EfacturaClient,
   AnafAuthenticator,
+  CompanyInfoClient,
   Invoice,
   loadCredentials,
+  saveCredentials,
   hasValidCredentials,
+  enrichMessagesWithCompanyNames,
   MessageFilter,
+  UploadStatusValue,
   type InvoiceConfig,
 } from "../src";
-import { writeFileSync } from "fs";
+import { writeFileSync, mkdirSync } from "fs";
+import { join } from "path";
+import { unzipSync } from "fflate";
 
 // Your OAuth credentials from ANAF SPV
 const CLIENT_ID = process.env.ANAF_CLIENT_ID || "";
@@ -42,7 +48,7 @@ async function main() {
 
   if (!CLIENT_ID || !CLIENT_SECRET) {
     console.log(
-      "❌ Missing ANAF_CLIENT_ID or ANAF_CLIENT_SECRET env variables."
+      "❌ Missing ANAF_CLIENT_ID or ANAF_CLIENT_SECRET env variables.",
     );
     console.log("   These are required for automatic token refresh.");
     return;
@@ -58,7 +64,7 @@ async function main() {
     redirectUri: REDIRECT_URI,
   });
 
-  // Create e-Factura client with authenticator for auto token refresh
+  // Create e-Factura client
   const client = new EfacturaClient(
     {
       vatNumber: VAT_NUMBER,
@@ -66,18 +72,24 @@ async function main() {
       accessToken: creds.accessToken,
       refreshToken: creds.refreshToken,
       expiresAt: creds.expiresAt,
+      onTokenRefresh: (newCreds) => {
+        saveCredentials(newCreds);
+      },
     },
-    authenticator
+    authenticator,
   );
+
+  // Company client for enriching messages with emitter names (no auth required)
+  const companyClient = new CompanyInfoClient();
 
   console.log(`📋 Using VAT: ${VAT_NUMBER}`);
   console.log(`🔧 Mode: ${TEST_MODE ? "TEST" : "PRODUCTION"}\n`);
 
   // =========================================================================
-  // Example 1: Validate XML
+  // Example 1: Generate invoice XML
   // =========================================================================
   console.log("─".repeat(50));
-  console.log("1️⃣  Validate XML\n");
+  console.log("1️⃣  Generate Invoice XML\n");
 
   const sampleInvoiceConfig: InvoiceConfig = {
     invoiceNumber: "TEST-2024-001",
@@ -93,9 +105,12 @@ async function main() {
       },
     },
     buyer: {
-      registrationName: "Lost Pixels Software SRL",
-      registrationCode: "52179481",
-      vatCode: "RO52179481",
+      // registrationName: "Client SRL",
+      // registrationCode: "12345678",
+      // vatCode: "RO12345678",
+      registrationName: "Daliro SRL",
+      registrationCode: "4464283",
+      vatCode: "RO4464283",
       address: {
         streetName: "Str. Negru Voda",
         cityName: "Curtea de Arges",
@@ -104,16 +119,23 @@ async function main() {
     },
     lines: [
       {
-        name: "Test Service",
+        name: "Test",
         quantity: 1,
         unitPrice: 100,
-        vatPercent: 19,
+        vatPercent: 21,
       },
     ],
   };
 
   const xml = Invoice.buildXml(sampleInvoiceConfig);
-  console.log("📝 Generated invoice XML");
+  console.log("   ✅ Generated invoice XML");
+  console.log(`   Size: ${xml.length} characters`);
+
+  // =========================================================================
+  // Example 2: Validate XML
+  // =========================================================================
+  console.log("\n" + "─".repeat(50));
+  console.log("2️⃣  Validate XML\n");
 
   try {
     const validation = await client.validateXml(xml);
@@ -122,26 +144,81 @@ async function main() {
     if (validation.messages && validation.messages.length > 0) {
       console.log(`   Messages: ${validation.messages.join(", ")}`);
     }
+    if (validation.traceId) {
+      console.log(`   Trace ID: ${validation.traceId}`);
+    }
   } catch (error) {
     console.log(`   ❌ Error: ${error}`);
   }
 
   // =========================================================================
-  // Example 2: List Messages
+  // Example 3: Upload + combined status flow
   // =========================================================================
   console.log("\n" + "─".repeat(50));
-  console.log("2️⃣  List Messages (last 7 days)\n");
+  console.log("3️⃣  Upload Document + getUploadStatus\n");
+
+  try {
+    // 1. Upload
+    const uploadResult = await client.uploadDocument(xml);
+    console.log(`   Execution status: ${uploadResult.executionStatus}`);
+    console.log(`   Upload ID: ${uploadResult.uploadIndex}`);
+
+    if (uploadResult.errors && uploadResult.errors.length > 0) {
+      console.log(`   Upload errors: ${uploadResult.errors.join(", ")}`);
+    }
+
+    if (uploadResult.uploadIndex) {
+      // 2. Combined status + download + error extraction in one call.
+      //    - If still processing: returns { status: "in prelucrare", data: undefined }
+      //    - If ok:  returns { status: "ok",  data: Buffer (ZIP) }
+      //    - If nok: returns { status: "nok", data: Buffer (ZIP), errors: [...] }
+      //      with error messages already extracted from the ANAF response XML
+      //      inside the archive.
+      const result = await client.getUploadStatus(uploadResult.uploadIndex);
+
+      console.log(`   Processing status: ${result.status}`);
+
+      if (result.status === UploadStatusValue.Ok) {
+        console.log(`   ✅ Processed — ZIP: ${result.data?.byteLength} bytes`);
+      } else if (result.status === UploadStatusValue.Failed) {
+        console.log(`   ❌ Failed`);
+        if (result.errors && result.errors.length > 0) {
+          console.log(`   ANAF errors:`);
+          for (const err of result.errors) {
+            console.log(`     • ${err}`);
+          }
+        }
+      } else {
+        // UploadStatusValue.InProgress — poll again later
+        console.log(`   ⏳ Still processing — poll again in a few seconds`);
+      }
+    }
+  } catch (error) {
+    console.log(`   ❌ Error: ${error}`);
+  }
+
+  // =========================================================================
+  // Example 4: List messages + detalii parsing
+  // =========================================================================
+  console.log("\n" + "─".repeat(50));
+  console.log("4️⃣  List Messages (last 7 days) + structured fields\n");
 
   try {
     const messages = await client.getMessages({
       days: 7,
-      filter: MessageFilter.InvoiceSent,
+      filter: MessageFilter.InvoiceReceived,
     });
 
     if (messages.messages && messages.messages.length > 0) {
       console.log(`   Found ${messages.messages.length} messages:`);
       for (const msg of messages.messages.slice(0, 5)) {
-        console.log(`   - [${msg.type}] ${msg.details} (${msg.creationDate})`);
+        // uploadIndex, cifEmitent, cifBeneficiar are parsed automatically
+        // from the raw detalii string — no extra calls needed.
+        console.log(
+          `   - [${msg.type}] uploadIndex=${msg.uploadIndex ?? "—"} ` +
+            `emitent=${msg.cifEmitent ?? "—"} beneficiar=${msg.cifBeneficiar ?? "—"} ` +
+            `(${msg.creationDate})`,
+        );
       }
     } else {
       console.log("   No messages found");
@@ -155,10 +232,43 @@ async function main() {
   }
 
   // =========================================================================
-  // Example 3: Paginated Messages
+  // Example 5: Enrich messages with company names
   // =========================================================================
   console.log("\n" + "─".repeat(50));
-  console.log("3️⃣  Paginated Messages\n");
+  console.log("5️⃣  Message Enrichment (company names)\n");
+
+  try {
+    const messages = await client.getMessages({
+      days: 7,
+      filter: MessageFilter.InvoiceReceived,
+    });
+
+    // A single batch lookup resolves all emitter CIFs to company names.
+    // If the lookup fails for any reason the original response is returned
+    // unchanged — no error is thrown.
+    const enriched = await enrichMessagesWithCompanyNames(
+      messages,
+      companyClient,
+    );
+
+    if (enriched.messages && enriched.messages.length > 0) {
+      console.log(`   Enriched ${enriched.messages.length} messages:`);
+      for (const msg of enriched.messages.slice(0, 5)) {
+        const emitter = msg.emitentName ?? msg.cifEmitent ?? "unknown";
+        console.log(`   - [${msg.type}] from: ${emitter}`);
+      }
+    } else {
+      console.log("   No messages to enrich");
+    }
+  } catch (error) {
+    console.log(`   ❌ Error: ${error}`);
+  }
+
+  // =========================================================================
+  // Example 6: Paginated messages
+  // =========================================================================
+  console.log("\n" + "─".repeat(50));
+  console.log("6️⃣  Paginated Messages\n");
 
   try {
     const now = Date.now();
@@ -171,12 +281,10 @@ async function main() {
       filter: MessageFilter.InvoiceSent,
     });
 
-    console.log(`   Total Records: ${paginatedMessages.totalRecords ?? 0}`);
-    console.log(`   Total Pages: ${paginatedMessages.totalPages ?? 0}`);
-    console.log(`   Current Page: ${paginatedMessages.currentPage ?? 1}`);
-    console.log(
-      `   Records on Page: ${paginatedMessages.messages?.length ?? 0}`
-    );
+    console.log(`   Total records: ${paginatedMessages.totalRecords ?? 0}`);
+    console.log(`   Total pages:   ${paginatedMessages.totalPages ?? 0}`);
+    console.log(`   Current page:  ${paginatedMessages.currentPage ?? 1}`);
+    console.log(`   On this page:  ${paginatedMessages.messages?.length ?? 0}`);
 
     if (paginatedMessages.error) {
       console.log(`   ⚠️  ${paginatedMessages.error}`);
@@ -186,53 +294,23 @@ async function main() {
   }
 
   // =========================================================================
-  // Example 4: Upload Document
+  // Example 7: XML to PDF conversion
   // =========================================================================
   console.log("\n" + "─".repeat(50));
-  console.log("4️⃣  Upload Document\n");
-
-  let uploadIndex: string | undefined;
-
-  try {
-    const uploadResult = await client.uploadDocument(xml);
-    console.log(`   Status: ${uploadResult.executionStatus}`);
-    console.log(`   Upload ID: ${uploadResult.uploadIndex}`);
-    uploadIndex = uploadResult.uploadIndex;
-
-    if (uploadResult.uploadIndex) {
-      // Check status
-      const status = await client.getStatusMessage(uploadResult.uploadIndex);
-      console.log(`   Processing: ${status.status}`);
-
-      if (status.downloadId) {
-        console.log(`   Download ID: ${status.downloadId}`);
-      }
-    }
-
-    if (uploadResult.errors && uploadResult.errors.length > 0) {
-      console.log(`   Errors: ${uploadResult.errors.join(", ")}`);
-    }
-  } catch (error) {
-    console.log(`   ❌ Error: ${error}`);
-  }
-
-  // =========================================================================
-  // Example 5: XML to PDF Conversion
-  // =========================================================================
-  console.log("\n" + "─".repeat(50));
-  console.log("5️⃣  XML to PDF Conversion\n");
+  console.log("7️⃣  XML to PDF Conversion\n");
 
   try {
     const pdfBuffer = await client.xmlToPdf(xml, "FACT1", false);
-    const pdfPath = "./examples/output/invoice.pdf";
+    const outputDir = join(process.cwd(), "downloads");
+    mkdirSync(outputDir, { recursive: true });
+    const pdfPath = join(outputDir, "invoice.pdf");
 
-    // Ensure output directory exists
     try {
       writeFileSync(pdfPath, Buffer.from(pdfBuffer));
       console.log(`   ✅ PDF saved to ${pdfPath}`);
       console.log(`   Size: ${pdfBuffer.byteLength} bytes`);
     } catch {
-      console.log(`   ⚠️ Could not save PDF (directory may not exist)`);
+      console.log(`   ⚠️  Could not save PDF (output directory may not exist)`);
       console.log(`   PDF size: ${pdfBuffer.byteLength} bytes`);
     }
   } catch (error) {
@@ -240,39 +318,97 @@ async function main() {
   }
 
   // =========================================================================
-  // Example 6: Download Document (if available)
+  // Example 8: B2C Upload (reference)
   // =========================================================================
   console.log("\n" + "─".repeat(50));
-  console.log("6️⃣  Download Document\n");
+  console.log("8️⃣  B2C Upload (Reference Only)\n");
+  console.log("   // B2C upload works identically to regular upload:");
+  console.log("   // const result = await client.uploadB2CDocument(xml);");
+  console.log(
+    "   // Use for invoices issued to consumers (no CUI/VAT number).",
+  );
+
+  // =========================================================================
+  // Example 9: Download received invoices
+  // =========================================================================
+  console.log("\n" + "─".repeat(50));
+  console.log("9️⃣  Download Received Invoices\n");
 
   try {
-    // Use uploadIndex from previous upload if available
-    if (uploadIndex) {
-      const status = await client.getStatusMessage(uploadIndex);
-      if (status.downloadId) {
-        const docBuffer = await client.downloadDocument(status.downloadId);
-        console.log(`   ✅ Downloaded document`);
-        console.log(`   Size: ${docBuffer.byteLength} bytes`);
-      } else {
+    const receivedMessages = await client.getMessages({
+      days: 7,
+      filter: MessageFilter.InvoiceReceived,
+    });
+
+    if (!receivedMessages.messages || receivedMessages.messages.length === 0) {
+      console.log("   No received invoices found in the last 7 days");
+    } else {
+      console.log(
+        `   Found ${receivedMessages.messages.length} received invoice(s)`,
+      );
+
+      // Create output directory if it doesn't exist
+      const outputDir = join(process.cwd(), "downloads");
+      try {
+        mkdirSync(outputDir, { recursive: true });
+      } catch {
+        // Directory may already exist
+      }
+
+      // Download up to 3 invoices to keep the example lightweight
+      const toDownload = receivedMessages.messages.slice(0, 3);
+
+      for (const msg of toDownload) {
         console.log(
-          `   ⏳ Document still processing (status: ${status.status})`
+          `   ↓ Downloading invoice ${msg.id} (from ${msg.cifEmitent ?? "unknown"})...`,
+        );
+
+        try {
+          // 1. Download the ZIP archive from ANAF
+          const zipBuffer = await client.downloadDocument(msg.id);
+          const zipPath = `${outputDir}/invoice-${msg.id}.zip`;
+          writeFileSync(zipPath, zipBuffer);
+          console.log(
+            `      ✅ ZIP saved: ${zipPath} (${zipBuffer.byteLength} bytes)`,
+          );
+
+          // 2. Extract the XML from the ZIP
+          try {
+            const files = unzipSync(zipBuffer);
+            const entries = Object.entries(files);
+
+            for (const [fileName, fileData] of entries) {
+              if (fileName.endsWith(".xml")) {
+                const xmlPath = `${outputDir}/invoice-${msg.id}-${fileName}`;
+                writeFileSync(xmlPath, Buffer.from(fileData));
+                console.log(`      ✅ XML extracted: ${xmlPath}`);
+              }
+            }
+          } catch (zipError) {
+            console.log(
+              `      ⚠️  Could not extract ZIP: ${zipError instanceof Error ? zipError.message : zipError}`,
+            );
+          }
+        } catch (downloadError) {
+          console.log(
+            `      ❌ Download failed: ${downloadError instanceof Error ? downloadError.message : downloadError}`,
+          );
+        }
+      }
+
+      if (receivedMessages.messages.length > toDownload.length) {
+        console.log(
+          `   ...and ${receivedMessages.messages.length - toDownload.length} more (not downloaded in this example)`,
         );
       }
-    } else {
-      console.log("   ⚠️ No upload ID available from previous step");
+    }
+
+    if (receivedMessages.error) {
+      console.log(`   ⚠️  ${receivedMessages.error}`);
     }
   } catch (error) {
     console.log(`   ❌ Error: ${error}`);
   }
-
-  // =========================================================================
-  // Example 7: B2C Upload (commented - for reference)
-  // =========================================================================
-  console.log("\n" + "─".repeat(50));
-  console.log("7️⃣  B2C Upload (Reference Only)\n");
-  console.log("   // B2C upload is similar to regular upload:");
-  console.log("   // const result = await client.uploadB2CDocument(xml);");
-  console.log("   // Use for invoices to consumers (no CUI/VAT number)");
 
   console.log("\n✅ Done!");
 }
