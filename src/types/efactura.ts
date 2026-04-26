@@ -119,22 +119,6 @@ export interface StatusResponse {
   errors?: string[];
 }
 
-/**
- * Combined upload status result returned by `getUploadStatus`.
- *
- * Extends StatusResponse with the raw ZIP archive from ANAF.
- * When processing is complete (status is `ok` or `nok`), `data` contains the
- * full ZIP buffer. When status is `nok`, any error messages extracted from
- * the archive are appended to `errors`.
- */
-export interface UploadStatusResult extends StatusResponse {
-  /**
-   * Raw ZIP archive buffer returned by ANAF after processing.
-   * Present only when `status` is `ok` or `nok` (i.e. not `in prelucrare`).
-   */
-  data?: Buffer;
-}
-
 // =============================================================================
 // Message Types
 // =============================================================================

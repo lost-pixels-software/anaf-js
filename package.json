@@ -1,6 +1,6 @@
 {
   "name": "anaf-js",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "A comprehensive TypeScript library for the Romanian ANAF e-Factura system.",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -60,8 +60,8 @@
     "typescript": "^6.0.0"
   },
   "dependencies": {
+    "fast-xml-builder": "^1.1.5",
     "fast-xml-parser": "^5.7.2",
-    "fflate": "^0.8.2",
-    "xmlbuilder2": "^4.0.3"
+    "fflate": "^0.8.2"
   }
 }

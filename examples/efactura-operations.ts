@@ -164,18 +164,18 @@ async function main() {
     }
 
     if (uploadResult.uploadIndex) {
-      // 2. Combined status + download + error extraction in one call.
-      //    - If still processing: returns { status: "in prelucrare", data: undefined }
-      //    - If ok:  returns { status: "ok",  data: Buffer (ZIP) }
-      //    - If nok: returns { status: "nok", data: Buffer (ZIP), errors: [...] }
-      //      with error messages already extracted from the ANAF response XML
-      //      inside the archive.
+      // 2. Check status — returns status and downloadId when ready.
+      //    - If still processing: { status: "in prelucrare" }
+      //    - If ok:  { status: "ok",  downloadId: "..." }
+      //    - If nok: { status: "nok", downloadId: "...", errors: [...] }
       const result = await client.getUploadStatus(uploadResult.uploadIndex);
 
       console.log(`   Processing status: ${result.status}`);
 
-      if (result.status === UploadStatusValue.Ok) {
-        console.log(`   ✅ Processed — ZIP: ${result.data?.byteLength} bytes`);
+      if (result.status === UploadStatusValue.Ok && result.downloadId) {
+        // 3. Download the ZIP separately once a downloadId is available.
+        const zipBuffer = await client.downloadDocument(result.downloadId);
+        console.log(`   ✅ Processed — ZIP: ${zipBuffer.byteLength} bytes`);
       } else if (result.status === UploadStatusValue.Failed) {
         console.log(`   ❌ Failed`);
         if (result.errors && result.errors.length > 0) {

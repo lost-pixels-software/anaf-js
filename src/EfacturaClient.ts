@@ -39,7 +39,6 @@ import type {
   UploadOptions,
   UploadResponse,
   StatusResponse,
-  UploadStatusResult,
   Message,
   ListMessagesParams,
   ListMessagesResponse,
@@ -416,61 +415,16 @@ export class EfacturaClient {
   }
 
   /**
-   * Combined status check + download + error extraction.
+   * Check the processing status of an uploaded document.
    *
-   * Orchestrates the full post-upload flow:
-   * 1. Checks the upload status via `getStatusMessage`.
-   * 2. If still processing (`in prelucrare`), returns status immediately.
-   * 3. If done, downloads the ZIP archive from ANAF.
-   * 4. If the upload failed (`nok`), unzips the archive and extracts any
-   *    error messages from the ANAF response XML file inside it.
+   * Returns the current status from ANAF. Use `downloadDocument` separately
+   * to retrieve the ZIP archive once a `downloadId` is available.
    *
    * @param uploadId - The upload index returned by `uploadDocument`
-   * @returns Status with optional `data` (ZIP buffer) and enriched `errors`
+   * @returns The current status response
    */
-  async getUploadStatus(uploadId: string): Promise<UploadStatusResult> {
-    const status = await this.getStatusMessage(uploadId);
-
-    // Still processing or no download ID yet — nothing to download
-    if (!status.downloadId) {
-      return status;
-    }
-
-    const zipBuffer = await this.downloadDocument(status.downloadId);
-
-    // On failure, try to extract the ANAF error message from inside the ZIP
-    if (status.status === UploadStatusValue.Failed) {
-      try {
-        // Validate ZIP header
-        if (zipBuffer.length >= 4 && zipBuffer[0] === 0x50 && zipBuffer[1] === 0x4b) {
-          const files = unzipSync(new Uint8Array(zipBuffer));
-          
-          // Look for {uploadId}.xml specifically as instructed
-          const targetFileName = `${uploadId}.xml`;
-          const xmlData = files[targetFileName] || 
-                         files[Object.keys(files).find(n => n.endsWith(".xml") && !n.startsWith("semnatura_")) || ""];
-
-          if (xmlData) {
-            const xmlContent = Buffer.from(xmlData).toString("utf-8");
-            const xmlErrors = extractXmlErrors(xmlContent);
-            if (xmlErrors.length > 0) {
-              return {
-                ...status,
-                errors: [
-                  ...(status.errors ?? []),
-                  ...xmlErrors.map((e) => e.errorMessage),
-                ],
-                data: zipBuffer,
-              };
-            }
-          }
-        }
-      } catch {
-        // ZIP parsing failure is non-fatal — return what we have
-      }
-    }
-
-    return { ...status, data: zipBuffer };
+  async getUploadStatus(uploadId: string): Promise<StatusResponse> {
+    return this.getStatusMessage(uploadId);
   }
 
   // ===========================================================================

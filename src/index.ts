@@ -133,7 +133,6 @@ export type {
   UploadOptions,
   UploadResponse,
   StatusResponse,
-  UploadStatusResult,
   Message,
   ListMessagesParams,
   ListMessagesResponse,

@@ -5,8 +5,7 @@
  * Pass your invoice config, get XML. All calculations are automatic.
  */
 
-import { create } from "xmlbuilder2";
-import type { XMLBuilder } from "xmlbuilder2/lib/interfaces";
+import XMLBuilder from "fast-xml-builder";
 
 import type {
   Seller,
@@ -313,331 +312,289 @@ function generateXml(config: InvoiceConfig): string {
     };
   }
 
-  // Create XML document
-  const root = create({ version: "1.0", encoding: "UTF-8" }).ele("Invoice", {
-    xmlns: "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2",
-    "xmlns:cbc":
-      "urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2",
-    "xmlns:cac":
-      "urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2",
-    "xmlns:ccts": "urn:un:unece:uncefact:documentation:2",
-    "xmlns:qdt":
-      "urn:oasis:names:specification:ubl:schema:xsd:QualifiedDataTypes-2",
-    "xmlns:udt":
-      "urn:oasis:names:specification:ubl:schema:xsd:UnqualifiedDataTypes-2",
-    "xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
-  });
-
-  // Document header
-  root.ele("cbc:UBLVersionID").txt(UBL_VERSION).up();
-  root.ele("cbc:CustomizationID").txt(UBL_CUSTOMIZATION_ID).up();
-
   // Invoice ID
   const invoiceId = config.invoiceSeries
     ? `${config.invoiceSeries}${config.invoiceNumber}`
     : config.invoiceNumber;
-  root.ele("cbc:ID").txt(invoiceId).up();
 
-  // Dates
-  root.ele("cbc:IssueDate").txt(formatDate(config.issueDate)).up();
-  root
-    .ele("cbc:DueDate")
-    .txt(formatDate(config.dueDate || config.issueDate))
-    .up();
+  // Build the Invoice object for serialisation
+  const invoiceObj: Record<string, unknown> = {
+    "@_xmlns":
+      "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2",
+    "@_xmlns:cbc":
+      "urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2",
+    "@_xmlns:cac":
+      "urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2",
+    "@_xmlns:ccts": "urn:un:unece:uncefact:documentation:2",
+    "@_xmlns:qdt":
+      "urn:oasis:names:specification:ubl:schema:xsd:QualifiedDataTypes-2",
+    "@_xmlns:udt":
+      "urn:oasis:names:specification:ubl:schema:xsd:UnqualifiedDataTypes-2",
+    "@_xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
+    "cbc:UBLVersionID": UBL_VERSION,
+    "cbc:CustomizationID": UBL_CUSTOMIZATION_ID,
+    "cbc:ID": invoiceId,
+    "cbc:IssueDate": formatDate(config.issueDate),
+    "cbc:DueDate": formatDate(config.dueDate || config.issueDate),
+    "cbc:InvoiceTypeCode": config.invoiceTypeCode || "380",
+  };
 
-  // Invoice type
-  root
-    .ele("cbc:InvoiceTypeCode")
-    .txt(config.invoiceTypeCode || "380")
-    .up();
-
-  // Note
   if (config.note) {
-    root.ele("cbc:Note").txt(config.note).up();
+    invoiceObj["cbc:Note"] = config.note;
   }
-
-  // Tax point date
   if (config.taxPointDate) {
-    root.ele("cbc:TaxPointDate").txt(formatDate(config.taxPointDate)).up();
+    invoiceObj["cbc:TaxPointDate"] = formatDate(config.taxPointDate);
   }
 
-  // Currency
-  root.ele("cbc:DocumentCurrencyCode").txt(currency).up();
+  invoiceObj["cbc:DocumentCurrencyCode"] = currency;
 
   // CIUS-RO BR-RO-030: when invoice currency is not RON, accounting currency
   // must also be stated so ANAF can record VAT amounts in RON.
   if (currency !== DEFAULT_CURRENCY) {
-    root.ele("cbc:TaxCurrencyCode").txt(DEFAULT_CURRENCY).up();
+    invoiceObj["cbc:TaxCurrencyCode"] = DEFAULT_CURRENCY;
   }
 
-  // Buyer reference
   if (config.buyerReference) {
-    root.ele("cbc:BuyerReference").txt(config.buyerReference).up();
+    invoiceObj["cbc:BuyerReference"] = config.buyerReference;
   }
-
-  // Invoice period
   if (config.invoicePeriod) {
-    addInvoicePeriod(root, config.invoicePeriod);
+    invoiceObj["cac:InvoicePeriod"] = buildInvoicePeriod(config.invoicePeriod);
   }
-
-  // Order reference
   if (config.orderReference) {
-    root
-      .ele("cac:OrderReference")
-      .ele("cbc:ID")
-      .txt(config.orderReference.id)
-      .up()
-      .up();
+    invoiceObj["cac:OrderReference"] = { "cbc:ID": config.orderReference.id };
   }
 
   // Preceding invoice references (for credit notes)
-  for (const ref of config.precedingInvoiceReferences ?? []) {
-    const billingRef = root
-      .ele("cac:BillingReference")
-      .ele("cac:InvoiceDocumentReference");
-    billingRef.ele("cbc:ID").txt(ref.id).up();
-    if (ref.issueDate) {
-      billingRef.ele("cbc:IssueDate").txt(formatDate(ref.issueDate)).up();
-    }
-    billingRef.up().up();
+  if (config.precedingInvoiceReferences?.length) {
+    invoiceObj["cac:BillingReference"] =
+      config.precedingInvoiceReferences.map((ref) => ({
+        "cac:InvoiceDocumentReference": {
+          "cbc:ID": ref.id,
+          ...(ref.issueDate
+            ? { "cbc:IssueDate": formatDate(ref.issueDate) }
+            : {}),
+        },
+      }));
   }
 
-  // Contract reference
   if (config.contractReference) {
-    root
-      .ele("cac:ContractDocumentReference")
-      .ele("cbc:ID")
-      .txt(config.contractReference.id)
-      .up()
-      .up();
+    invoiceObj["cac:ContractDocumentReference"] = {
+      "cbc:ID": config.contractReference.id,
+    };
   }
 
-  // Parties
-  addParty(root, "cac:AccountingSupplierParty", config.seller, true);
-  addParty(root, "cac:AccountingCustomerParty", config.buyer, false);
+  invoiceObj["cac:AccountingSupplierParty"] = buildParty(
+    config.seller,
+    true
+  );
+  invoiceObj["cac:AccountingCustomerParty"] = buildParty(
+    config.buyer,
+    false
+  );
 
-  // Payment means
   if (paymentMeans) {
-    addPaymentMeans(root, paymentMeans);
+    invoiceObj["cac:PaymentMeans"] = buildPaymentMeans(paymentMeans);
   }
-
-  // Payment terms
   if (config.paymentTerms?.note) {
-    root
-      .ele("cac:PaymentTerms")
-      .ele("cbc:Note")
-      .txt(config.paymentTerms.note)
-      .up()
-      .up();
+    invoiceObj["cac:PaymentTerms"] = { "cbc:Note": config.paymentTerms.note };
+  }
+  if (allowanceCharges.length > 0) {
+    invoiceObj["cac:AllowanceCharge"] = allowanceCharges.map((ac) =>
+      buildAllowanceCharge(ac, currency)
+    );
   }
 
-  // Allowance/Charge
-  for (const ac of allowanceCharges) {
-    addAllowanceCharge(root, ac, currency);
-  }
-
-  // Tax total
-  const taxTotalEl = root.ele("cac:TaxTotal");
-  taxTotalEl
-    .ele("cbc:TaxAmount", { currencyID: currency })
-    .txt(totalTaxAmount.toFixed(2))
-    .up();
-
-  for (const subtotal of taxSubtotals) {
-    const subtotalEl = taxTotalEl.ele("cac:TaxSubtotal");
-    subtotalEl
-      .ele("cbc:TaxableAmount", { currencyID: currency })
-      .txt(subtotal.taxableAmount.toFixed(2))
-      .up();
-    subtotalEl
-      .ele("cbc:TaxAmount", { currencyID: currency })
-      .txt(subtotal.taxAmount.toFixed(2))
-      .up();
-
-    const taxCatEl = subtotalEl.ele("cac:TaxCategory");
-    taxCatEl.ele("cbc:ID").txt(subtotal.categoryId).up();
+  // Tax total(s)
+  const taxSubtotalObjs = taxSubtotals.map((subtotal) => {
+    const taxCat: Record<string, unknown> = {
+      "cbc:ID": subtotal.categoryId,
+    };
     if (subtotal.taxPercent !== null) {
-      taxCatEl.ele("cbc:Percent").txt(subtotal.taxPercent.toFixed(2)).up();
+      taxCat["cbc:Percent"] = subtotal.taxPercent.toFixed(2);
     }
     if (subtotal.taxExemptionReasonCode) {
-      taxCatEl
-        .ele("cbc:TaxExemptionReasonCode")
-        .txt(subtotal.taxExemptionReasonCode)
-        .up();
+      taxCat["cbc:TaxExemptionReasonCode"] = subtotal.taxExemptionReasonCode;
     }
     if (subtotal.taxExemptionReason) {
-      taxCatEl
-        .ele("cbc:TaxExemptionReason")
-        .txt(subtotal.taxExemptionReason)
-        .up();
+      taxCat["cbc:TaxExemptionReason"] = subtotal.taxExemptionReason;
     }
-    taxCatEl
-      .ele("cac:TaxScheme")
-      .ele("cbc:ID")
-      .txt(DEFAULT_TAX_SCHEME)
-      .up()
-      .up();
-    taxCatEl.up();
-    subtotalEl.up();
-  }
-  taxTotalEl.up();
+    taxCat["cac:TaxScheme"] = { "cbc:ID": DEFAULT_TAX_SCHEME };
+
+    return {
+      "cbc:TaxableAmount": {
+        "@_currencyID": currency,
+        "#text": subtotal.taxableAmount.toFixed(2),
+      },
+      "cbc:TaxAmount": {
+        "@_currencyID": currency,
+        "#text": subtotal.taxAmount.toFixed(2),
+      },
+      "cac:TaxCategory": taxCat,
+    };
+  });
+
+  const primaryTaxTotal: Record<string, unknown> = {
+    "cbc:TaxAmount": {
+      "@_currencyID": currency,
+      "#text": totalTaxAmount.toFixed(2),
+    },
+    "cac:TaxSubtotal": taxSubtotalObjs,
+  };
 
   // BR-53 / BT-111: when TaxCurrencyCode (BT-6) is present, emit a second
   // TaxTotal with the total VAT amount in the accounting currency (RON).
   // No subtotals are required in this second element.
   if (currency !== DEFAULT_CURRENCY && config.taxCurrencyTaxAmount !== undefined) {
-    root
-      .ele("cac:TaxTotal")
-      .ele("cbc:TaxAmount", { currencyID: DEFAULT_CURRENCY })
-      .txt(config.taxCurrencyTaxAmount.toFixed(2))
-      .up()
-      .up();
+    invoiceObj["cac:TaxTotal"] = [
+      primaryTaxTotal,
+      {
+        "cbc:TaxAmount": {
+          "@_currencyID": DEFAULT_CURRENCY,
+          "#text": config.taxCurrencyTaxAmount.toFixed(2),
+        },
+      },
+    ];
+  } else {
+    invoiceObj["cac:TaxTotal"] = primaryTaxTotal;
   }
 
-  // Monetary totals
-  const mtEl = root.ele("cac:LegalMonetaryTotal");
-  mtEl
-    .ele("cbc:LineExtensionAmount", { currencyID: currency })
-    .txt(lineExtensionAmount.toFixed(2))
-    .up();
-  mtEl
-    .ele("cbc:TaxExclusiveAmount", { currencyID: currency })
-    .txt(taxExclusiveAmount.toFixed(2))
-    .up();
-  mtEl
-    .ele("cbc:TaxInclusiveAmount", { currencyID: currency })
-    .txt(taxInclusiveAmount.toFixed(2))
-    .up();
+  // Legal monetary total
+  const lmt: Record<string, unknown> = {
+    "cbc:LineExtensionAmount": {
+      "@_currencyID": currency,
+      "#text": lineExtensionAmount.toFixed(2),
+    },
+    "cbc:TaxExclusiveAmount": {
+      "@_currencyID": currency,
+      "#text": taxExclusiveAmount.toFixed(2),
+    },
+    "cbc:TaxInclusiveAmount": {
+      "@_currencyID": currency,
+      "#text": taxInclusiveAmount.toFixed(2),
+    },
+  };
   if (allowanceTotalAmount > 0) {
-    mtEl
-      .ele("cbc:AllowanceTotalAmount", { currencyID: currency })
-      .txt(allowanceTotalAmount.toFixed(2))
-      .up();
+    lmt["cbc:AllowanceTotalAmount"] = {
+      "@_currencyID": currency,
+      "#text": allowanceTotalAmount.toFixed(2),
+    };
   }
   if (chargeTotalAmount > 0) {
-    mtEl
-      .ele("cbc:ChargeTotalAmount", { currencyID: currency })
-      .txt(chargeTotalAmount.toFixed(2))
-      .up();
+    lmt["cbc:ChargeTotalAmount"] = {
+      "@_currencyID": currency,
+      "#text": chargeTotalAmount.toFixed(2),
+    };
   }
-  mtEl
-    .ele("cbc:PayableAmount", { currencyID: currency })
-    .txt(taxInclusiveAmount.toFixed(2))
-    .up();
-  mtEl.up();
+  lmt["cbc:PayableAmount"] = {
+    "@_currencyID": currency,
+    "#text": taxInclusiveAmount.toFixed(2),
+  };
+  invoiceObj["cac:LegalMonetaryTotal"] = lmt;
 
   // Invoice lines
-  for (const line of lines) {
-    const lineEl = root.ele("cac:InvoiceLine");
-    lineEl.ele("cbc:ID").txt(String(line.id)).up();
-    lineEl
-      .ele("cbc:InvoicedQuantity", { unitCode: line.unitCode })
-      .txt(line.quantity.toString())
-      .up();
-    lineEl
-      .ele("cbc:LineExtensionAmount", { currencyID: currency })
-      .txt(line.lineExtensionAmount.toFixed(2))
-      .up();
-
-    const itemEl = lineEl.ele("cac:Item");
+  invoiceObj["cac:InvoiceLine"] = lines.map((line) => {
+    const itemObj: Record<string, unknown> = {};
     if (line.description) {
-      itemEl.ele("cbc:Description").txt(line.description).up();
+      itemObj["cbc:Description"] = line.description;
     }
-    itemEl.ele("cbc:Name").txt(line.name).up();
+    itemObj["cbc:Name"] = line.name;
     if (line.sellerItemId) {
-      itemEl
-        .ele("cac:SellersItemIdentification")
-        .ele("cbc:ID")
-        .txt(line.sellerItemId)
-        .up()
-        .up();
+      itemObj["cac:SellersItemIdentification"] = { "cbc:ID": line.sellerItemId };
     }
-
-    const taxCatEl = itemEl.ele("cac:ClassifiedTaxCategory");
-    taxCatEl.ele("cbc:ID").txt(line.taxCategoryCode).up();
+    const classifiedTaxCat: Record<string, unknown> = {
+      "cbc:ID": line.taxCategoryCode,
+    };
     if (line.vatPercent > 0) {
-      taxCatEl.ele("cbc:Percent").txt(line.vatPercent.toFixed(2)).up();
+      classifiedTaxCat["cbc:Percent"] = line.vatPercent.toFixed(2);
     }
-    taxCatEl.ele("cac:TaxScheme").ele("cbc:ID").txt("VAT").up().up();
-    taxCatEl.up();
-    itemEl.up();
+    classifiedTaxCat["cac:TaxScheme"] = { "cbc:ID": "VAT" };
+    itemObj["cac:ClassifiedTaxCategory"] = classifiedTaxCat;
 
-    lineEl
-      .ele("cac:Price")
-      .ele("cbc:PriceAmount", { currencyID: currency })
-      .txt(roundMoney(line.unitPrice).toFixed(2))
-      .up()
-      .up();
-    lineEl.up();
-  }
+    return {
+      "cbc:ID": String(line.id),
+      "cbc:InvoicedQuantity": {
+        "@_unitCode": line.unitCode,
+        "#text": line.quantity.toString(),
+      },
+      "cbc:LineExtensionAmount": {
+        "@_currencyID": currency,
+        "#text": line.lineExtensionAmount.toFixed(2),
+      },
+      "cac:Item": itemObj,
+      "cac:Price": {
+        "cbc:PriceAmount": {
+          "@_currencyID": currency,
+          "#text": roundMoney(line.unitPrice).toFixed(2),
+        },
+      },
+    };
+  });
 
-  return root.end({ prettyPrint: true });
+  const builder = new XMLBuilder({
+    ignoreAttributes: false,
+    attributeNamePrefix: "@_",
+    textNodeName: "#text",
+    format: true,
+    indentBy: "  ",
+    suppressEmptyNode: true,
+  });
+
+  const xml = builder.build({ Invoice: invoiceObj }) as string;
+  return `<?xml version="1.0" encoding="UTF-8"?>\n${xml}`;
 }
 
 // =============================================================================
 // XML Helper Functions
 // =============================================================================
 
-function addInvoicePeriod(root: XMLBuilder, period: InvoicePeriod): void {
-  const periodEl = root.ele("cac:InvoicePeriod");
+function buildInvoicePeriod(period: InvoicePeriod): Record<string, unknown> {
+  const obj: Record<string, unknown> = {};
   if (period.startDate) {
-    periodEl.ele("cbc:StartDate").txt(formatDate(period.startDate)).up();
+    obj["cbc:StartDate"] = formatDate(period.startDate);
   }
   if (period.endDate) {
-    periodEl.ele("cbc:EndDate").txt(formatDate(period.endDate)).up();
+    obj["cbc:EndDate"] = formatDate(period.endDate);
   }
   if (period.descriptionCode) {
-    periodEl.ele("cbc:DescriptionCode").txt(period.descriptionCode).up();
+    obj["cbc:DescriptionCode"] = period.descriptionCode;
   }
-  periodEl.up();
+  return obj;
 }
 
-function addParty(
-  root: XMLBuilder,
-  tagName: string,
+function buildParty(
   party: Seller | Buyer,
   isSeller: boolean
-): void {
-  const partyWrapper = root.ele(tagName);
-  const partyEl = partyWrapper.ele("cac:Party");
-
+): Record<string, unknown> {
   const address = party.address;
   const county = sanitizeCounty(address.countrySubentity);
   const city = isBucharest(county)
     ? sanitizeCity(address.cityName)
     : address.cityName;
 
-  // Party Name — required by UBL 2.1 schema before PostalAddress
-  partyEl
-    .ele("cac:PartyName")
-    .ele("cbc:Name")
-    .txt(party.registrationName)
-    .up()
-    .up();
-
   // Postal Address
-  const postalAddress = partyEl.ele("cac:PostalAddress");
-  postalAddress.ele("cbc:StreetName").txt(address.streetName).up();
+  const postalAddress: Record<string, unknown> = {
+    "cbc:StreetName": address.streetName,
+  };
   if (address.additionalStreetName) {
-    postalAddress
-      .ele("cbc:AdditionalStreetName")
-      .txt(address.additionalStreetName)
-      .up();
+    postalAddress["cbc:AdditionalStreetName"] = address.additionalStreetName;
   }
-  postalAddress.ele("cbc:CityName").txt(city).up();
+  postalAddress["cbc:CityName"] = city;
   if (address.postalZone) {
-    postalAddress.ele("cbc:PostalZone").txt(address.postalZone).up();
+    postalAddress["cbc:PostalZone"] = address.postalZone;
   }
   if (county) {
-    postalAddress.ele("cbc:CountrySubentity").txt(county).up();
+    postalAddress["cbc:CountrySubentity"] = county;
   }
-  postalAddress
-    .ele("cac:Country")
-    .ele("cbc:IdentificationCode")
-    .txt(address.countryCode || DEFAULT_COUNTRY_CODE)
-    .up()
-    .up();
-  postalAddress.up();
+  postalAddress["cac:Country"] = {
+    "cbc:IdentificationCode": address.countryCode || DEFAULT_COUNTRY_CODE,
+  };
+
+  // Party
+  const partyObj: Record<string, unknown> = {
+    // Party Name — required by UBL 2.1 schema before PostalAddress
+    "cac:PartyName": { "cbc:Name": party.registrationName },
+    "cac:PostalAddress": postalAddress,
+  };
 
   // Party Tax Scheme — only emitted when the party has a VAT registration.
   // Omitting this block entirely for non-VAT payers avoids emitting an invalid
@@ -646,156 +603,130 @@ function addParty(
     ? (party as Seller).vatCode
     : (party as Buyer).vatCode;
   if (vatCode) {
-    partyEl
-      .ele("cac:PartyTaxScheme")
-      .ele("cbc:CompanyID")
-      .txt(normalizeVatNumber(vatCode))
-      .up()
-      .ele("cac:TaxScheme")
-      .ele("cbc:ID")
-      .txt("VAT")
-      .up()
-      .up()
-      .up();
+    partyObj["cac:PartyTaxScheme"] = {
+      "cbc:CompanyID": normalizeVatNumber(vatCode),
+      "cac:TaxScheme": { "cbc:ID": "VAT" },
+    };
   }
 
   // Party Legal Entity
-  const legalEntity = partyEl.ele("cac:PartyLegalEntity");
-  legalEntity.ele("cbc:RegistrationName").txt(party.registrationName).up();
+  const legalEntity: Record<string, unknown> = {
+    "cbc:RegistrationName": party.registrationName,
+  };
   if (party.registrationNumber) {
-    legalEntity.ele("cbc:CompanyID").txt(party.registrationNumber).up();
+    legalEntity["cbc:CompanyID"] = party.registrationNumber;
   }
   if (isSeller && (party as Seller).legalFormData) {
-    legalEntity
-      .ele("cbc:CompanyLegalForm")
-      .txt((party as Seller).legalFormData!)
-      .up();
+    legalEntity["cbc:CompanyLegalForm"] = (party as Seller).legalFormData!;
   }
-  legalEntity.up();
+  partyObj["cac:PartyLegalEntity"] = legalEntity;
 
   // Contact
   if (party.email || party.phone) {
-    const contact = partyEl.ele("cac:Contact");
+    const contact: Record<string, unknown> = {};
     if (party.phone) {
-      contact.ele("cbc:Telephone").txt(party.phone).up();
+      contact["cbc:Telephone"] = party.phone;
     }
     if (party.email) {
-      contact.ele("cbc:ElectronicMail").txt(party.email).up();
+      contact["cbc:ElectronicMail"] = party.email;
     }
-    contact.up();
+    partyObj["cac:Contact"] = contact;
   }
 
-  partyEl.up();
-  partyWrapper.up();
+  return { "cac:Party": partyObj };
 }
 
-function addPaymentMeans(root: XMLBuilder, payment: PaymentMeans): void {
-  const pmEl = root.ele("cac:PaymentMeans");
+function buildPaymentMeans(payment: PaymentMeans): Record<string, unknown> {
+  const pmObj: Record<string, unknown> = {};
 
   if (payment.paymentMeansDescription) {
-    pmEl
-      .ele("cbc:PaymentMeansCode", { name: payment.paymentMeansDescription })
-      .txt(payment.paymentMeansCode)
-      .up();
+    pmObj["cbc:PaymentMeansCode"] = {
+      "@_name": payment.paymentMeansDescription,
+      "#text": payment.paymentMeansCode,
+    };
   } else {
-    pmEl.ele("cbc:PaymentMeansCode").txt(payment.paymentMeansCode).up();
+    pmObj["cbc:PaymentMeansCode"] = payment.paymentMeansCode;
   }
 
   if (payment.paymentId) {
-    pmEl.ele("cbc:PaymentID").txt(payment.paymentId).up();
+    pmObj["cbc:PaymentID"] = payment.paymentId;
   }
 
   if (payment.cardPayment) {
-    const cardEl = pmEl.ele("cac:CardAccount");
-    cardEl
-      .ele("cbc:PrimaryAccountNumberID")
-      .txt(payment.cardPayment.primaryAccountNumber)
-      .up();
-    cardEl.ele("cbc:NetworkID").txt(payment.cardPayment.networkId).up();
+    const cardObj: Record<string, unknown> = {
+      "cbc:PrimaryAccountNumberID": payment.cardPayment.primaryAccountNumber,
+      "cbc:NetworkID": payment.cardPayment.networkId,
+    };
     if (payment.cardPayment.holderName) {
-      cardEl.ele("cbc:HolderName").txt(payment.cardPayment.holderName).up();
+      cardObj["cbc:HolderName"] = payment.cardPayment.holderName;
     }
-    cardEl.up();
+    pmObj["cac:CardAccount"] = cardObj;
   }
 
   if (payment.bankTransfer) {
-    const bankEl = pmEl.ele("cac:PayeeFinancialAccount");
-    bankEl.ele("cbc:ID").txt(payment.bankTransfer.accountId).up();
+    const bankObj: Record<string, unknown> = {
+      "cbc:ID": payment.bankTransfer.accountId,
+    };
     if (payment.bankTransfer.accountName) {
-      bankEl.ele("cbc:Name").txt(payment.bankTransfer.accountName).up();
+      bankObj["cbc:Name"] = payment.bankTransfer.accountName;
     }
     if (payment.bankTransfer.bankId) {
-      bankEl
-        .ele("cac:FinancialInstitutionBranch")
-        .ele("cbc:ID")
-        .txt(payment.bankTransfer.bankId)
-        .up()
-        .up();
+      bankObj["cac:FinancialInstitutionBranch"] = {
+        "cbc:ID": payment.bankTransfer.bankId,
+      };
     }
-    bankEl.up();
+    pmObj["cac:PayeeFinancialAccount"] = bankObj;
   }
 
   if (payment.directDebit) {
-    const ddEl = pmEl.ele("cac:PaymentMandate");
-    ddEl.ele("cbc:ID").txt(payment.directDebit.mandateId).up();
-    ddEl
-      .ele("cac:PayerFinancialAccount")
-      .ele("cbc:ID")
-      .txt(payment.directDebit.debitedAccountId)
-      .up()
-      .up();
-    ddEl.up();
+    pmObj["cac:PaymentMandate"] = {
+      "cbc:ID": payment.directDebit.mandateId,
+      "cac:PayerFinancialAccount": {
+        "cbc:ID": payment.directDebit.debitedAccountId,
+      },
+    };
   }
 
-  pmEl.up();
+  return pmObj;
 }
 
-function addAllowanceCharge(
-  root: XMLBuilder,
+function buildAllowanceCharge(
   ac: AllowanceCharge,
   currency: string
-): void {
-  const acEl = root.ele("cac:AllowanceCharge");
-  acEl
-    .ele("cbc:ChargeIndicator")
-    .txt(ac.chargeIndicator ? "true" : "false")
-    .up();
+): Record<string, unknown> {
+  const acObj: Record<string, unknown> = {
+    "cbc:ChargeIndicator": ac.chargeIndicator ? "true" : "false",
+  };
 
   if (ac.reasonCode) {
-    acEl.ele("cbc:AllowanceChargeReasonCode").txt(ac.reasonCode).up();
+    acObj["cbc:AllowanceChargeReasonCode"] = ac.reasonCode;
   }
   if (ac.reason) {
-    acEl.ele("cbc:AllowanceChargeReason").txt(ac.reason).up();
+    acObj["cbc:AllowanceChargeReason"] = ac.reason;
   }
   if (ac.percentage !== undefined) {
-    acEl.ele("cbc:MultiplierFactorNumeric").txt(ac.percentage.toString()).up();
+    acObj["cbc:MultiplierFactorNumeric"] = ac.percentage.toString();
   }
 
-  acEl
-    .ele("cbc:Amount", { currencyID: currency })
-    .txt(ac.amount.toFixed(2))
-    .up();
+  acObj["cbc:Amount"] = {
+    "@_currencyID": currency,
+    "#text": ac.amount.toFixed(2),
+  };
 
   if (ac.baseAmount !== undefined) {
-    acEl
-      .ele("cbc:BaseAmount", { currencyID: currency })
-      .txt(ac.baseAmount.toFixed(2))
-      .up();
+    acObj["cbc:BaseAmount"] = {
+      "@_currencyID": currency,
+      "#text": ac.baseAmount.toFixed(2),
+    };
   }
 
   if (ac.taxCategoryCode || ac.vatPercent !== undefined) {
-    const taxCat = acEl.ele("cac:TaxCategory");
-    taxCat
-      .ele("cbc:ID")
-      .txt(ac.taxCategoryCode || "S")
-      .up();
-    taxCat
-      .ele("cbc:Percent")
-      .txt((ac.vatPercent ?? 0).toFixed(2))
-      .up();
-    taxCat.ele("cac:TaxScheme").ele("cbc:ID").txt("VAT").up().up();
-    taxCat.up();
+    acObj["cac:TaxCategory"] = {
+      "cbc:ID": ac.taxCategoryCode || "S",
+      "cbc:Percent": (ac.vatPercent ?? 0).toFixed(2),
+      "cac:TaxScheme": { "cbc:ID": "VAT" },
+    };
   }
 
-  acEl.up();
+  return acObj;
 }

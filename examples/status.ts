@@ -74,8 +74,6 @@ async function main() {
 
   let statusResult;
   try {
-    // getUploadStatus is a higher-level method that also downloads the result ZIP
-    // and extracts detailed errors from it if the status is "nok" (failed).
     statusResult = await client.getUploadStatus(UPLOAD_INDEX);
     console.log(`   Status: ${statusResult.status}`);
 
@@ -86,11 +84,12 @@ async function main() {
 
     if (statusResult.status === "in prelucrare") {
       console.log("   ⏳ Document is still processing. Try again in a few seconds.");
-    } else if (statusResult.data) {
-      // getUploadStatus already downloaded the buffer for us
-      const docBuffer = statusResult.data;
+    } else if (statusResult.downloadId) {
       console.log(`   ✅ Download ID: ${statusResult.downloadId}`);
-      
+
+      // Use downloadDocument separately to retrieve the ZIP archive.
+      const docBuffer = await client.downloadDocument(statusResult.downloadId);
+
       const outputDir = join(process.cwd(), "downloads");
       mkdirSync(outputDir, { recursive: true });
 
@@ -100,7 +99,7 @@ async function main() {
       writeFileSync(filePath, Buffer.from(docBuffer));
       console.log(`   ✅ Saved to ${filePath}`);
       console.log(`   Size: ${docBuffer.byteLength} bytes`);
-    } else if (statusResult.status === "nok" && !statusResult.downloadId) {
+    } else {
       console.log("   ❌ Document failed with no download ID available.");
     }
   } catch (error) {
