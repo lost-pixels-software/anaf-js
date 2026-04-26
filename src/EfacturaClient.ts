@@ -13,6 +13,7 @@ import {
   extractXmlErrors,
 } from "./utils/xml-parser";
 import { parseMessageDetails } from "./utils/message-parser";
+import { parseInvoiceXml } from "./utils/invoice-parser";
 import {
   AnafValidationError,
   AnafApiError,
@@ -52,6 +53,7 @@ import type {
   ValidationResponseRaw,
   ExecutionStatus,
 } from "./types/efactura";
+import type { InvoiceData } from "./types/invoice";
 
 /**
  * ANAF e-Factura API Client
@@ -332,6 +334,88 @@ export class EfacturaClient {
   }
 
   /**
+   * Download and parse a received invoice by its download ID.
+   *
+   * ANAF returns a ZIP archive containing the UBL XML invoice.
+   * This method downloads the archive, extracts the XML, and parses
+   * it into a structured JSON object.
+   *
+   * @param downloadId - The download ID from a message (`message.id`)
+   * @returns Parsed invoice data
+   */
+  async getInvoiceData(downloadId: string): Promise<InvoiceData> {
+    if (!downloadId?.trim()) {
+      throw new AnafValidationError("Download ID is required");
+    }
+
+    const zipBuffer = await this.downloadDocument(downloadId);
+
+    // Validate ZIP header (PK\x03\x04)
+    if (
+      zipBuffer.length < 4 ||
+      zipBuffer[0] !== 0x50 ||
+      zipBuffer[1] !== 0x4b
+    ) {
+      const content = zipBuffer.toString("utf-8").substring(0, 100);
+      throw new AnafApiError(
+        `Invalid ZIP data received from ANAF. The response might be an error message or empty instead of a ZIP archive. Content starts with: ${content}`,
+        0
+      );
+    }
+
+    let xmlContent: string;
+    try {
+      const files = unzipSync(new Uint8Array(zipBuffer));
+      const fileNames = Object.keys(files);
+
+      // Find the correct XML file in the archive
+      // Priority 1: Exact match for {downloadId}.xml
+      // Priority 2: Any XML that doesn't start with "semnatura_"
+      // Priority 3: First XML found
+      const targetFileName = `${downloadId}.xml`;
+      let xmlFileName = fileNames.find((name) => name === targetFileName);
+
+      if (!xmlFileName) {
+        xmlFileName = fileNames.find(
+          (name) => name.endsWith(".xml") && !name.startsWith("semnatura_")
+        );
+      }
+
+      if (!xmlFileName) {
+        xmlFileName = fileNames.find((name) => name.endsWith(".xml"));
+      }
+
+      if (!xmlFileName) {
+        throw new AnafValidationError(
+          "No XML file found in the downloaded ZIP archive"
+        );
+      }
+
+      xmlContent = Buffer.from(files[xmlFileName]!).toString("utf-8");
+    } catch (error) {
+      if (error instanceof AnafValidationError || error instanceof AnafApiError)
+        throw error;
+      throw new AnafApiError(
+        `Failed to extract invoice from ZIP: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
+        0
+      );
+    }
+
+    try {
+      return parseInvoiceXml(xmlContent);
+    } catch (error) {
+      throw new AnafApiError(
+        `Failed to parse invoice XML: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
+        0
+      );
+    }
+  }
+
+  /**
    * Combined status check + download + error extraction.
    *
    * Orchestrates the full post-upload flow:
@@ -357,20 +441,28 @@ export class EfacturaClient {
     // On failure, try to extract the ANAF error message from inside the ZIP
     if (status.status === UploadStatusValue.Failed) {
       try {
-        const files = unzipSync(zipBuffer);
-        const xmlData = files[`${uploadId}.xml`];
-        if (xmlData) {
-          const xmlContent = Buffer.from(xmlData).toString("utf-8");
-          const xmlErrors = extractXmlErrors(xmlContent);
-          if (xmlErrors.length > 0) {
-            return {
-              ...status,
-              errors: [
-                ...(status.errors ?? []),
-                ...xmlErrors.map((e) => e.errorMessage),
-              ],
-              data: zipBuffer,
-            };
+        // Validate ZIP header
+        if (zipBuffer.length >= 4 && zipBuffer[0] === 0x50 && zipBuffer[1] === 0x4b) {
+          const files = unzipSync(new Uint8Array(zipBuffer));
+          
+          // Look for {uploadId}.xml specifically as instructed
+          const targetFileName = `${uploadId}.xml`;
+          const xmlData = files[targetFileName] || 
+                         files[Object.keys(files).find(n => n.endsWith(".xml") && !n.startsWith("semnatura_")) || ""];
+
+          if (xmlData) {
+            const xmlContent = Buffer.from(xmlData).toString("utf-8");
+            const xmlErrors = extractXmlErrors(xmlContent);
+            if (xmlErrors.length > 0) {
+              return {
+                ...status,
+                errors: [
+                  ...(status.errors ?? []),
+                  ...xmlErrors.map((e) => e.errorMessage),
+                ],
+                data: zipBuffer,
+              };
+            }
           }
         }
       } catch {

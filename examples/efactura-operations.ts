@@ -24,7 +24,6 @@ import {
 } from "../src";
 import { writeFileSync, mkdirSync } from "fs";
 import { join } from "path";
-import { unzipSync } from "fflate";
 
 // Your OAuth credentials from ANAF SPV
 const CLIENT_ID = process.env.ANAF_CLIENT_ID || "";
@@ -105,12 +104,9 @@ async function main() {
       },
     },
     buyer: {
-      // registrationName: "Client SRL",
-      // registrationCode: "12345678",
-      // vatCode: "RO12345678",
-      registrationName: "Daliro SRL",
-      registrationCode: "4464283",
-      vatCode: "RO4464283",
+      registrationName: "Lost Pixels Software SRL",
+      registrationCode: "52179481",
+      vatCode: "RO52179481",
       address: {
         streetName: "Str. Negru Voda",
         cityName: "Curtea de Arges",
@@ -312,99 +308,6 @@ async function main() {
     } catch {
       console.log(`   ⚠️  Could not save PDF (output directory may not exist)`);
       console.log(`   PDF size: ${pdfBuffer.byteLength} bytes`);
-    }
-  } catch (error) {
-    console.log(`   ❌ Error: ${error}`);
-  }
-
-  // =========================================================================
-  // Example 8: B2C Upload (reference)
-  // =========================================================================
-  console.log("\n" + "─".repeat(50));
-  console.log("8️⃣  B2C Upload (Reference Only)\n");
-  console.log("   // B2C upload works identically to regular upload:");
-  console.log("   // const result = await client.uploadB2CDocument(xml);");
-  console.log(
-    "   // Use for invoices issued to consumers (no CUI/VAT number).",
-  );
-
-  // =========================================================================
-  // Example 9: Download received invoices
-  // =========================================================================
-  console.log("\n" + "─".repeat(50));
-  console.log("9️⃣  Download Received Invoices\n");
-
-  try {
-    const receivedMessages = await client.getMessages({
-      days: 7,
-      filter: MessageFilter.InvoiceReceived,
-    });
-
-    if (!receivedMessages.messages || receivedMessages.messages.length === 0) {
-      console.log("   No received invoices found in the last 7 days");
-    } else {
-      console.log(
-        `   Found ${receivedMessages.messages.length} received invoice(s)`,
-      );
-
-      // Create output directory if it doesn't exist
-      const outputDir = join(process.cwd(), "downloads");
-      try {
-        mkdirSync(outputDir, { recursive: true });
-      } catch {
-        // Directory may already exist
-      }
-
-      // Download up to 3 invoices to keep the example lightweight
-      const toDownload = receivedMessages.messages.slice(0, 3);
-
-      for (const msg of toDownload) {
-        console.log(
-          `   ↓ Downloading invoice ${msg.id} (from ${msg.cifEmitent ?? "unknown"})...`,
-        );
-
-        try {
-          // 1. Download the ZIP archive from ANAF
-          const zipBuffer = await client.downloadDocument(msg.id);
-          const zipPath = `${outputDir}/invoice-${msg.id}.zip`;
-          writeFileSync(zipPath, zipBuffer);
-          console.log(
-            `      ✅ ZIP saved: ${zipPath} (${zipBuffer.byteLength} bytes)`,
-          );
-
-          // 2. Extract the XML from the ZIP
-          try {
-            const files = unzipSync(zipBuffer);
-            const entries = Object.entries(files);
-
-            for (const [fileName, fileData] of entries) {
-              if (fileName.endsWith(".xml")) {
-                const xmlPath = `${outputDir}/invoice-${msg.id}-${fileName}`;
-                writeFileSync(xmlPath, Buffer.from(fileData));
-                console.log(`      ✅ XML extracted: ${xmlPath}`);
-              }
-            }
-          } catch (zipError) {
-            console.log(
-              `      ⚠️  Could not extract ZIP: ${zipError instanceof Error ? zipError.message : zipError}`,
-            );
-          }
-        } catch (downloadError) {
-          console.log(
-            `      ❌ Download failed: ${downloadError instanceof Error ? downloadError.message : downloadError}`,
-          );
-        }
-      }
-
-      if (receivedMessages.messages.length > toDownload.length) {
-        console.log(
-          `   ...and ${receivedMessages.messages.length - toDownload.length} more (not downloaded in this example)`,
-        );
-      }
-    }
-
-    if (receivedMessages.error) {
-      console.log(`   ⚠️  ${receivedMessages.error}`);
     }
   } catch (error) {
     console.log(`   ❌ Error: ${error}`);

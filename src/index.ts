@@ -142,6 +142,20 @@ export type {
   ValidationResult,
 } from "./types/efactura";
 
+export type {
+  InvoiceData,
+  ParsedAddress,
+  ParsedParty,
+  ParsedInvoiceLine,
+  ParsedTaxSubtotal,
+  ParsedTaxTotal,
+  ParsedMonetaryTotal,
+  ParsedPaymentMeans,
+  ParsedAllowanceCharge,
+  ParsedDocumentReference,
+  ParsedInvoicePeriod,
+} from "./types/invoice";
+
 export {
   ExecutionStatus,
   UploadStatusValue,
@@ -187,6 +201,8 @@ export { parseMessageDetails } from "./utils/message-parser";
 export type { ParsedMessageDetails } from "./utils/message-parser";
 
 export { enrichMessagesWithCompanyNames } from "./utils/message-enricher";
+
+export { parseInvoiceXml } from "./utils/invoice-parser";
 
 // =============================================================================
 // Constants

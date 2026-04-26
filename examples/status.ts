@@ -12,7 +12,9 @@ import { join } from "path";
 // CONFIGURATION
 // ===========================================================================
 // Replace this with the upload index you want to check
-const UPLOAD_INDEX = "5029597395";
+// const UPLOAD_INDEX = "5032650150";
+const UPLOAD_INDEX = "5032853961";
+
 const VAT_NUMBER = process.env.ANAF_VAT_NUMBER || "RO12345678";
 const TEST_MODE = true;
 
@@ -65,30 +67,30 @@ async function main() {
     authenticator,
   );
 
+  // ── Part 1: Check upload status of a sent invoice ────────────────────────
   console.log(`📋 Checking Upload Index: ${UPLOAD_INDEX}`);
   console.log(`   VAT: ${VAT_NUMBER}`);
   console.log(`   Mode: ${TEST_MODE ? "TEST" : "PRODUCTION"}\n`);
 
+  let statusResult;
   try {
-    const status = await client.getStatusMessage(UPLOAD_INDEX);
-    console.log(`   Status: ${status.status}`);
+    // getUploadStatus is a higher-level method that also downloads the result ZIP
+    // and extracts detailed errors from it if the status is "nok" (failed).
+    statusResult = await client.getUploadStatus(UPLOAD_INDEX);
+    console.log(`   Status: ${statusResult.status}`);
 
-    if (status.errors && status.errors.length > 0) {
-      console.log(`   Errors: ${status.errors.join(", ")}`);
+    if (statusResult.errors && statusResult.errors.length > 0) {
+      console.log(`   Errors Found:`);
+      statusResult.errors.forEach((err, i) => console.log(`     ${i + 1}. ${err}`));
     }
 
-    if (status.status !== "ok") {
-      console.log(
-        `   Document is not ready for download yet: ${status.status}`,
-      );
-      return;
-    }
-
-    if (status.downloadId) {
-      console.log(`   ✅ Download ID: ${status.downloadId}`);
-      console.log(`   ⬇️  Downloading document...`);
-
-      const docBuffer = await client.downloadDocument(status.downloadId);
+    if (statusResult.status === "in prelucrare") {
+      console.log("   ⏳ Document is still processing. Try again in a few seconds.");
+    } else if (statusResult.data) {
+      // getUploadStatus already downloaded the buffer for us
+      const docBuffer = statusResult.data;
+      console.log(`   ✅ Download ID: ${statusResult.downloadId}`);
+      
       const outputDir = join(process.cwd(), "downloads");
       mkdirSync(outputDir, { recursive: true });
 
@@ -98,12 +100,98 @@ async function main() {
       writeFileSync(filePath, Buffer.from(docBuffer));
       console.log(`   ✅ Saved to ${filePath}`);
       console.log(`   Size: ${docBuffer.byteLength} bytes`);
-    } else {
-      console.log("   ⏳ Document is not ready for download yet.");
-      console.log("      Try running this script again in a few moments.");
+    } else if (statusResult.status === "nok" && !statusResult.downloadId) {
+      console.log("   ❌ Document failed with no download ID available.");
     }
   } catch (error) {
-    console.log(`   ❌ Error: ${error}`);
+    console.log(`   ❌ Error checking status: ${error}`);
+  }
+
+  // ── Part 2: Parse a received invoice directly into JSON ──────────────────
+  const idToParse =
+    statusResult?.status === "ok" ? statusResult.downloadId : null;
+
+  if (idToParse) {
+    console.log("\n📥 Invoice Parsing (JSON)\n");
+    console.log(
+      `   ID: ${idToParse}${idToParse === statusResult?.downloadId ? " (from current upload)" : ""}`,
+    );
+
+    try {
+      const invoice = await client.getInvoiceData(idToParse);
+
+      console.log(`   ✅ Invoice parsed successfully\n`);
+      console.log(`   Invoice ID:        ${invoice.invoiceId}`);
+      console.log(`   Issue Date:        ${invoice.issueDate}`);
+      console.log(`   Due Date:          ${invoice.dueDate}`);
+      console.log(`   Currency:          ${invoice.currency}`);
+      console.log(`   Type:              ${invoice.invoiceTypeCode}`);
+      console.log(`   Lines:             ${invoice.lineCount}`);
+      console.log();
+      console.log(`   Seller:            ${invoice.seller?.registrationName}`);
+      console.log(`   Seller CIF:        ${invoice.seller?.registrationCode}`);
+      console.log(`   Seller VAT:        ${invoice.seller?.vatCode}`);
+      console.log();
+      console.log(`   Buyer:             ${invoice.buyer?.registrationName}`);
+      console.log(`   Buyer CIF:         ${invoice.buyer?.registrationCode}`);
+      console.log(`   Buyer VAT:         ${invoice.buyer?.vatCode}`);
+      console.log();
+
+      if (invoice.monetaryTotal) {
+        console.log(
+          `   Line Total:        ${invoice.monetaryTotal.lineExtensionAmount}`,
+        );
+        console.log(
+          `   Tax Exclusive:     ${invoice.monetaryTotal.taxExclusiveAmount}`,
+        );
+        console.log(
+          `   Tax Inclusive:     ${invoice.monetaryTotal.taxInclusiveAmount}`,
+        );
+        console.log(
+          `   Payable:           ${invoice.monetaryTotal.payableAmount}`,
+        );
+      }
+
+      if (invoice.lines && invoice.lines.length > 0) {
+        console.log("\n   Line Items:");
+        for (const line of invoice.lines) {
+          console.log(
+            `     - ${line.name} | Qty: ${line.quantity} ${line.unitCode} | ` +
+              `Price: ${line.unitPrice} | VAT: ${line.vatPercent}% | ` +
+              `Total: ${line.lineExtensionAmount}`,
+          );
+        }
+      }
+    } catch (error) {
+      console.log(`   ❌ Error: ${error}`);
+    }
+  } else {
+    console.log(
+      "\n💡 Tip: Set RECEIVED_INVOICE_DOWNLOAD_ID to try parsing a received invoice.",
+    );
+    console.log(
+      "   You can get a download ID from client.getMessages({ days: 7 }).",
+    );
+  }
+
+  // ── Part 3: List messages from the last 7 days ───────────────────────────
+  console.log("\n📋 Recent Messages (Last 7 Days)\n");
+
+  try {
+    const messages = await client.getMessages({ days: 7 });
+
+    if (messages.messages && messages.messages.length > 0) {
+      console.log(`   Found ${messages.messages.length} messages:`);
+      for (const msg of messages.messages) {
+        console.log(
+          `   - [${msg.type}] ID: ${msg.id} | Date: ${msg.creationDate} | Index: ${msg.uploadIndex ?? "N/A"}`,
+        );
+      }
+    } else {
+      console.log("   No messages found in the last 7 days.");
+    }
+  } catch (error) {
+    console.log(`   ❌ Failed to fetch messages: ${error}`);
   }
 
   console.log("\nDone!");

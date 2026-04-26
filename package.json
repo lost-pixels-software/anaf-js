@@ -60,6 +60,7 @@
     "typescript": "^6.0.0"
   },
   "dependencies": {
+    "fast-xml-parser": "^5.7.2",
     "fflate": "^0.8.2",
     "xmlbuilder2": "^4.0.3"
   }
