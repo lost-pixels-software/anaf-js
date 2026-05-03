@@ -261,17 +261,40 @@ Returns the UBL 2.1 XML string directly.
 
 ### `EfacturaClient`
 
+The main client for e-Factura operations.
+
 | Method | Description |
 | --- | --- |
 | `uploadDocument(xml, options?)` | Upload a UBL/CII/CN invoice XML |
 | `uploadB2CDocument(xml, options?)` | Upload a B2C invoice |
-| `getStatusMessage(uploadId)` | Check processing status of an upload |
+| `getUploadStatus(uploadId)` | **Combined**: status + download + automatic error extraction in one call |
 | `downloadDocument(downloadId)` | Download the raw ZIP `Buffer` from ANAF |
-| `getUploadStatus(uploadId)` | **Combined**: status + download + error extraction in one call |
+| `getInvoiceData(downloadId)` | **Combined**: download ZIP + extract XML + parse into JSON in one call |
 | `getMessages(params)` | List recent messages (up to 60 days) |
 | `getMessagesPaginated(params)` | List messages with date range + pagination |
 | `validateXml(xml, standard?)` | Validate XML against ANAF schema (prod only) |
 | `xmlToPdf(xml, standard?, validate?)` | Convert XML to PDF (prod only) |
+
+### `CompanyInfoClient`
+
+Client for fetching Romanian company data from the public ANAF API. No authentication required.
+
+| Method | Description |
+| --- | --- |
+| `getCompanyData(vatCode, date?)` | Get data for a single company |
+| `batchGetCompanyData(vatCodes, date?)` | Fetch data for up to 100 companies at once |
+| `isValidVatCode(vatCode)` | Validate if a VAT code format is correct |
+
+### `AnafAuthenticator`
+
+Handles the OAuth 2.0 flow with ANAF.
+
+| Method | Description |
+| --- | --- |
+| `getAuthorizationUrl(settings?)` | Generate the ANAF login URL for the user |
+| `exchangeCodeForToken(code)` | Exchange the auth code for access/refresh tokens |
+| `refreshAccessToken(refreshToken)` | Manually refresh an expired access token |
+
 
 ### Automatic Token Refresh
 

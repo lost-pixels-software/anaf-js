@@ -12,8 +12,7 @@ import { join } from "path";
 // CONFIGURATION
 // ===========================================================================
 // Replace this with the upload index you want to check
-// const UPLOAD_INDEX = "5032650150";
-const UPLOAD_INDEX = "5032853961";
+const UPLOAD_INDEX = "5033158937";
 
 const VAT_NUMBER = process.env.ANAF_VAT_NUMBER || "RO12345678";
 const TEST_MODE = true;
@@ -79,11 +78,15 @@ async function main() {
 
     if (statusResult.errors && statusResult.errors.length > 0) {
       console.log(`   Errors Found:`);
-      statusResult.errors.forEach((err, i) => console.log(`     ${i + 1}. ${err}`));
+      statusResult.errors.forEach((err, i) =>
+        console.log(`     ${i + 1}. ${err}`),
+      );
     }
 
     if (statusResult.status === "in prelucrare") {
-      console.log("   ⏳ Document is still processing. Try again in a few seconds.");
+      console.log(
+        "   ⏳ Document is still processing. Try again in a few seconds.",
+      );
     } else if (statusResult.downloadId) {
       console.log(`   ✅ Download ID: ${statusResult.downloadId}`);
 

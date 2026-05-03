@@ -93,12 +93,7 @@ export class HttpClient {
     );
 
     if (!response.ok) {
-      const errorText = await response.text().catch(() => "Unknown error");
-      throw new AnafApiError(
-        `HTTP ${response.status}: ${errorText}`,
-        response.status,
-        errorText
-      );
+      throw await this.handleErrorResponse(response);
     }
 
     const data = (await response.json()) as T;
@@ -130,12 +125,7 @@ export class HttpClient {
     );
 
     if (!response.ok) {
-      const errorText = await response.text().catch(() => "Unknown error");
-      throw new AnafApiError(
-        `HTTP ${response.status}: ${errorText}`,
-        response.status,
-        errorText
-      );
+      throw await this.handleErrorResponse(response);
     }
 
     // Try to parse as JSON first, fall back to text
@@ -176,12 +166,7 @@ export class HttpClient {
     );
 
     if (!response.ok) {
-      const errorText = await response.text().catch(() => "Unknown error");
-      throw new AnafApiError(
-        `HTTP ${response.status}: ${errorText}`,
-        response.status,
-        errorText
-      );
+      throw await this.handleErrorResponse(response);
     }
 
     // Try to parse as JSON first, fall back to text
@@ -222,12 +207,7 @@ export class HttpClient {
     );
 
     if (!response.ok) {
-      const errorText = await response.text().catch(() => "Unknown error");
-      throw new AnafApiError(
-        `HTTP ${response.status}: ${errorText}`,
-        response.status,
-        errorText
-      );
+      throw await this.handleErrorResponse(response);
     }
 
     const data = (await response.json()) as T;
@@ -254,12 +234,7 @@ export class HttpClient {
     );
 
     if (!response.ok) {
-      const errorText = await response.text().catch(() => "Unknown error");
-      throw new AnafApiError(
-        `HTTP ${response.status}: ${errorText}`,
-        response.status,
-        errorText
-      );
+      throw await this.handleErrorResponse(response);
     }
 
     const contentType = response.headers.get("content-type") || "";
@@ -294,12 +269,7 @@ export class HttpClient {
     );
 
     if (!response.ok) {
-      const errorText = await response.text().catch(() => "Unknown error");
-      throw new AnafApiError(
-        `HTTP ${response.status}: ${errorText}`,
-        response.status,
-        errorText
-      );
+      throw await this.handleErrorResponse(response);
     }
 
     const arrayBuffer = await response.arrayBuffer();
@@ -308,5 +278,29 @@ export class HttpClient {
       status: response.status,
       headers: response.headers,
     };
+  }
+  /**
+   * Handle error response and throw AnafApiError
+   */
+  private async handleErrorResponse(response: Response): Promise<AnafApiError> {
+    const errorText = await response.text().catch(() => "Unknown error");
+    let message = `HTTP ${response.status}: ${errorText}`;
+
+    // Try to extract a better message if it's a JSON error (CustomErrorMessage)
+    try {
+      const contentType = response.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        const errorJson = JSON.parse(errorText);
+        if (errorJson.message) {
+          message = `ANAF API Error (${response.status}): ${errorJson.message}`;
+        } else if (errorJson.error) {
+          message = `ANAF API Error (${response.status}): ${errorJson.error}`;
+        }
+      }
+    } catch {
+      // Not JSON or parse failed, keep default message
+    }
+
+    return new AnafApiError(message, response.status, errorText);
   }
 }

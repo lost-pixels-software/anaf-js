@@ -258,7 +258,7 @@ export class EfacturaClient {
   /**
    * Get upload status
    */
-  async getStatusMessage(uploadId: string): Promise<StatusResponse> {
+  private async getRawStatus(uploadId: string): Promise<StatusResponse> {
     if (!uploadId?.trim()) {
       throw new AnafValidationError("Upload ID is required");
     }
@@ -285,10 +285,22 @@ export class EfacturaClient {
         rawData = response.data;
       }
 
+      const errors = rawData.Errors?.map((e) => e.errorMessage) || [];
+
+      // If it's a JSON response with 'message' or 'error' fields (CustomErrorMessage)
+      // but arrived with a 200 OK (rare but possible with some proxies)
+      const anyRawData = rawData as any;
+      if (anyRawData.message && !errors.includes(anyRawData.message)) {
+        errors.push(anyRawData.message);
+      }
+      if (anyRawData.error && !errors.includes(anyRawData.error)) {
+        errors.push(anyRawData.error);
+      }
+
       return {
         status: rawData.stare as UploadStatusValue | undefined,
         downloadId: rawData.id_descarcare,
-        errors: rawData.Errors?.map((e) => e.errorMessage),
+        errors: errors.length > 0 ? errors : undefined,
       };
     } catch (error) {
       if (error instanceof AnafApiError && error.statusCode === 401) {
@@ -417,14 +429,58 @@ export class EfacturaClient {
   /**
    * Check the processing status of an uploaded document.
    *
-   * Returns the current status from ANAF. Use `downloadDocument` separately
-   * to retrieve the ZIP archive once a `downloadId` is available.
+   * Returns the current status from ANAF. If the status is 'nok' (failed),
+   * this method automatically downloads the error archive, extracts the
+   * detailed error messages, and includes them in the response.
    *
    * @param uploadId - The upload index returned by `uploadDocument`
-   * @returns The current status response
+   * @returns The current status response with any extracted errors
    */
   async getUploadStatus(uploadId: string): Promise<StatusResponse> {
-    return this.getStatusMessage(uploadId);
+    const status = await this.getRawStatus(uploadId);
+
+    // If the document failed processing (nok) and we have a downloadId,
+    // ANAF provides a ZIP file containing an XML with detailed error messages.
+    // We automatically download and parse it to provide better feedback.
+    if (status.status === UploadStatusValue.Failed && status.downloadId) {
+      try {
+        const zipBuffer = await this.downloadDocument(status.downloadId);
+
+        // Validate ZIP header
+        if (
+          zipBuffer.length > 4 &&
+          zipBuffer[0] === 0x50 &&
+          zipBuffer[1] === 0x4b
+        ) {
+          const files = unzipSync(new Uint8Array(zipBuffer));
+          const xmlFile = Object.keys(files).find((name) =>
+            name.endsWith(".xml")
+          );
+
+          if (xmlFile) {
+            const xmlContent = Buffer.from(files[xmlFile]!).toString("utf-8");
+            const extractedErrors = extractXmlErrors(xmlContent);
+
+            if (extractedErrors.length > 0) {
+              const newErrors = [
+                ...(status.errors || []),
+                ...extractedErrors.map((e) => e.errorMessage),
+              ];
+              // Remove duplicates
+              status.errors = [...new Set(newErrors)];
+            }
+          }
+        }
+      } catch (error) {
+        console.warn(
+          `⚠️ Failed to extract detailed errors for ${uploadId}:`,
+          error
+        );
+        // We still return the original status even if error extraction fails
+      }
+    }
+
+    return status;
   }
 
   // ===========================================================================
