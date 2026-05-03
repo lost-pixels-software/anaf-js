@@ -481,8 +481,16 @@ import {
 formatDate(new Date());           // "2024-01-15"
 normalizeVatNumber("12345678");   // "RO12345678"
 sanitizeCounty("Cluj");           // "RO-CJ"
+sanitizeCounty("AG");             // "RO-AG" (Short codes also supported)
 sanitizeCity("Sector 1");         // "SECTOR1"
 roundMoney(1.005);                // 1.01
+
+### Address Sanitization & Validation
+
+The library automatically sanitizes Romanian addresses to ensure CIUS-RO compliance:
+- **Counties**: Converts names ("Arges", "București") or short codes ("AG", "B") to ISO 3166-2:RO format ("RO-AG", "RO-B").
+- **Bucharest**: Automatically converts city names like "Sector 1" or "S1" to "SECTOR1" (required format) when the county is Bucharest.
+- **Validation**: `Invoice.buildXml` will throw an error if a Romanian address is missing a county or uses an unrecognized one, helping you catch errors before uploading to ANAF.
 
 parseMessageDetails(
   "Factura cu id_incarcare=123 emisa de cif_emitent=456 pentru cif_beneficiar=789"

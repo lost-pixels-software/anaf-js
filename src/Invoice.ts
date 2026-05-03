@@ -145,6 +145,24 @@ function validateParty(party: Seller | Buyer, role: string): void {
   if (!party.address.cityName?.trim()) {
     throw new Error(`${role} city name is required`);
   }
+
+  // County validation for Romanian addresses
+  const countryCode = party.address.countryCode || DEFAULT_COUNTRY_CODE;
+  if (countryCode === "RO") {
+    const county = party.address.countrySubentity;
+    if (!county?.trim()) {
+      throw new Error(
+        `${role} county (countrySubentity) is required for Romanian addresses`
+      );
+    }
+
+    const sanitized = sanitizeCounty(county);
+    if (!/^RO-[A-Z]{1,2}$/.test(sanitized)) {
+      throw new Error(
+        `${role} county "${county}" is not recognized. Please use an ISO 3166-2:RO code (e.g., "RO-AG") or a standard county name (e.g., "Arges").`
+      );
+    }
+  }
 }
 
 function validateLine(line: InvoiceLineInput, index: number): void {

@@ -14,39 +14,60 @@ import type { BucharestSector, RomanianCountyCode } from "../types/codes";
  * @returns True if Bucharest
  */
 export function isBucharest(county: string): boolean {
-  const normalizedCounty = county.toUpperCase().trim();
+  const normalized = normalizeForMapping(county);
   return (
-    normalizedCounty === "RO-B" ||
-    normalizedCounty === "BUCUREȘTI" ||
-    normalizedCounty === "BUCURESTI" ||
-    normalizedCounty === "B"
+    normalized === "ROB" ||
+    normalized === "BUCURESTI" ||
+    normalized === "B"
   );
 }
 
 /**
- * Sanitize a city/sector name to CIUS-RO format
- * For Bucharest, converts variations like "Sector 1", "S1", "Sectorul 1" to "SECTOR1"
+ * Sanitize a city/sector name to CIUS-RO format.
+ * For Bucharest, converts variations like "Sector 1", "Sect. 1", "S1", "Sectorul 1" to "SECTOR1".
+ *
  * @param city - City/sector name
  * @returns Sanitized city/sector name
  */
 export function sanitizeCity(city: string): BucharestSector | string {
   const normalized = city.toUpperCase().trim();
 
-  // Already in correct format
+  // 1. Check if it's already a perfect match
   if (BucharestSectors.includes(normalized as BucharestSector)) {
     return normalized as BucharestSector;
   }
 
-  // Extract sector number from various formats
-  const sectorMatch = normalized.match(/(?:SECTOR(?:UL)?|S)?\s*(\d)/);
+  // 2. Extract sector number from various formats:
+  // "Sector 1", "Sect. 1", "S1", "Sectorul 1", etc.
+  const sectorMatch = normalized.match(/(?:SECTOR(?:UL)?|SECT|S)?\s*(\d+)/);
   if (sectorMatch && sectorMatch[1]) {
-    const sectorNum = sectorMatch[1];
-    if (parseInt(sectorNum) >= 1 && parseInt(sectorNum) <= 6) {
+    const sectorNum = parseInt(sectorMatch[1], 10);
+    if (sectorNum >= 1 && sectorNum <= 6) {
       return `SECTOR${sectorNum}` as BucharestSector;
     }
   }
 
   return city;
+}
+
+/**
+ * Internal helper to normalize a string for mapping lookups.
+ * Strips all diacritics, spaces, and special characters.
+ */
+function normalizeForMapping(str: string): string {
+  return str
+    .toUpperCase()
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // Remove common accents
+    .replace(/Ș/g, "S") // Handle Romanian specific comma-below
+    .replace(/Ț/g, "T")
+    .replace(/Ş/g, "S") // Handle cedilla variants
+    .replace(/Ţ/g, "T")
+    .replace(/Ă/g, "A")
+    .replace(/Â/g, "A")
+    .replace(/Î/g, "I")
+    .replace(/[^A-Z0-9]/g, ""); // Remove spaces, dashes, etc.
 }
 
 /**
@@ -57,77 +78,103 @@ export function sanitizeCity(city: string): BucharestSector | string {
 export function sanitizeCounty(county: string | undefined): string {
   if (!county) return "";
 
-  const normalized = county.toUpperCase().trim();
+  const input = county.toUpperCase().trim();
 
-  // If already in ISO format (RO-XX), return as is
-  if (/^RO-[A-Z]{1,2}$/.test(normalized)) {
-    return normalized;
+  // If already in correct ISO format (RO-XX), return as is
+  if (/^RO-[A-Z]{1,2}$/.test(input)) {
+    return input;
   }
 
-  // Common county name mappings
+  const normalized = normalizeForMapping(input);
+
+  // Common county short code and name mappings
+  // All keys are normalized (ASCII only, no spaces/dashes)
   const countyMappings: Record<string, RomanianCountyCode> = {
+    // Short codes
+    B: "RO-B",
+    AB: "RO-AB",
+    AR: "RO-AR",
+    AG: "RO-AG",
+    BC: "RO-BC",
+    BH: "RO-BH",
+    BN: "RO-BN",
+    BT: "RO-BT",
+    BR: "RO-BR",
+    BV: "RO-BV",
+    BZ: "RO-BZ",
+    CL: "RO-CL",
+    CS: "RO-CS",
+    CJ: "RO-CJ",
+    CT: "RO-CT",
+    CV: "RO-CV",
+    DB: "RO-DB",
+    DJ: "RO-DJ",
+    GL: "RO-GL",
+    GR: "RO-GR",
+    GJ: "RO-GJ",
+    HR: "RO-HR",
+    HD: "RO-HD",
+    IL: "RO-IL",
+    IS: "RO-IS",
+    IF: "RO-IF",
+    MM: "RO-MM",
+    MH: "RO-MH",
+    MS: "RO-MS",
+    NT: "RO-NT",
+    OT: "RO-OT",
+    PH: "RO-PH",
+    SJ: "RO-SJ",
+    SM: "RO-SM",
+    SB: "RO-SB",
+    SV: "RO-SV",
+    TR: "RO-TR",
+    TM: "RO-TM",
+    TL: "RO-TL",
+    VL: "RO-VL",
+    VS: "RO-VS",
+    VN: "RO-VN",
+
+    // Names
     BUCURESTI: "RO-B",
-    BUCUREȘTI: "RO-B",
     ALBA: "RO-AB",
     ARAD: "RO-AR",
     ARGES: "RO-AG",
-    ARGEȘ: "RO-AG",
     BACAU: "RO-BC",
-    BACĂU: "RO-BC",
     BIHOR: "RO-BH",
-    "BISTRITA-NASAUD": "RO-BN",
-    "BISTRIȚA-NĂSĂUD": "RO-BN",
+    BISTRITANASAUD: "RO-BN",
     BOTOSANI: "RO-BT",
-    BOTOȘANI: "RO-BT",
     BRAILA: "RO-BR",
-    BRĂILA: "RO-BR",
     BRASOV: "RO-BV",
-    BRAȘOV: "RO-BV",
     BUZAU: "RO-BZ",
-    BUZĂU: "RO-BZ",
     CALARASI: "RO-CL",
-    CĂLĂRAȘI: "RO-CL",
-    "CARAS-SEVERIN": "RO-CS",
-    "CARAȘ-SEVERIN": "RO-CS",
+    CARASSEVERIN: "RO-CS",
     CLUJ: "RO-CJ",
     CONSTANTA: "RO-CT",
-    CONSTANȚA: "RO-CT",
     COVASNA: "RO-CV",
     DAMBOVITA: "RO-DB",
-    DÂMBOVIȚA: "RO-DB",
     DOLJ: "RO-DJ",
     GALATI: "RO-GL",
-    GALAȚI: "RO-GL",
     GIURGIU: "RO-GR",
     GORJ: "RO-GJ",
     HARGHITA: "RO-HR",
     HUNEDOARA: "RO-HD",
     IALOMITA: "RO-IL",
-    IALOMIȚA: "RO-IL",
     IASI: "RO-IS",
-    IAȘI: "RO-IS",
     ILFOV: "RO-IF",
     MARAMURES: "RO-MM",
-    MARAMUREȘ: "RO-MM",
     MEHEDINTI: "RO-MH",
-    MEHEDINȚI: "RO-MH",
     MURES: "RO-MS",
-    MUREȘ: "RO-MS",
     NEAMT: "RO-NT",
-    NEAMȚ: "RO-NT",
     OLT: "RO-OT",
     PRAHOVA: "RO-PH",
     SALAJ: "RO-SJ",
-    SĂLAJ: "RO-SJ",
-    "SATU MARE": "RO-SM",
+    SATUMARE: "RO-SM",
     SIBIU: "RO-SB",
     SUCEAVA: "RO-SV",
     TELEORMAN: "RO-TR",
     TIMIS: "RO-TM",
-    TIMIȘ: "RO-TM",
     TULCEA: "RO-TL",
     VALCEA: "RO-VL",
-    VÂLCEA: "RO-VL",
     VASLUI: "RO-VS",
     VRANCEA: "RO-VN",
   };
