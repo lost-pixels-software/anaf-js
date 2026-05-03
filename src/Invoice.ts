@@ -5,7 +5,7 @@
  * Pass your invoice config, get XML. All calculations are automatic.
  */
 
-import XMLBuilder from "fast-xml-builder";
+import { XMLBuilder } from "fast-xml-parser";
 
 import type {
   Seller,
@@ -152,14 +152,14 @@ function validateParty(party: Seller | Buyer, role: string): void {
     const county = party.address.countrySubentity;
     if (!county?.trim()) {
       throw new Error(
-        `${role} county (countrySubentity) is required for Romanian addresses`
+        `${role} county (countrySubentity) is required for Romanian addresses`,
       );
     }
 
     const sanitized = sanitizeCounty(county);
     if (!/^RO-[A-Z]{1,2}$/.test(sanitized)) {
       throw new Error(
-        `${role} county "${county}" is not recognized. Please use an ISO 3166-2:RO code (e.g., "RO-AG") or a standard county name (e.g., "Arges").`
+        `${role} county "${county}" is not recognized. Please use an ISO 3166-2:RO code (e.g., "RO-AG") or a standard county name (e.g., "Arges").`,
       );
     }
   }
@@ -178,7 +178,7 @@ function validateLine(line: InvoiceLineInput, index: number): void {
 
   if (typeof line.unitPrice !== "number" || line.unitPrice < 0) {
     throw new Error(
-      `Line ${lineNum}: Unit price must be a non-negative number`
+      `Line ${lineNum}: Unit price must be a non-negative number`,
     );
   }
 
@@ -250,7 +250,7 @@ function generateXml(config: InvoiceConfig): string {
     if (taxGroups.has(key)) {
       const group = taxGroups.get(key)!;
       group.taxableAmount = roundMoney(
-        group.taxableAmount + line.lineExtensionAmount
+        group.taxableAmount + line.lineExtensionAmount,
       );
       group.taxAmount = roundMoney(group.taxAmount + line.vatAmount);
     } else {
@@ -297,25 +297,25 @@ function generateXml(config: InvoiceConfig): string {
 
   const taxSubtotals = Array.from(taxGroups.values());
   const totalTaxAmount = roundMoney(
-    taxSubtotals.reduce((sum, st) => sum + st.taxAmount, 0)
+    taxSubtotals.reduce((sum, st) => sum + st.taxAmount, 0),
   );
 
   // Compute monetary totals
   const lineExtensionAmount = roundMoney(
-    lines.reduce((sum, l) => sum + l.lineExtensionAmount, 0)
+    lines.reduce((sum, l) => sum + l.lineExtensionAmount, 0),
   );
   const allowanceTotalAmount = roundMoney(
     allowanceCharges
       .filter((ac) => !ac.chargeIndicator)
-      .reduce((sum, ac) => sum + ac.amount, 0)
+      .reduce((sum, ac) => sum + ac.amount, 0),
   );
   const chargeTotalAmount = roundMoney(
     allowanceCharges
       .filter((ac) => ac.chargeIndicator)
-      .reduce((sum, ac) => sum + ac.amount, 0)
+      .reduce((sum, ac) => sum + ac.amount, 0),
   );
   const taxExclusiveAmount = roundMoney(
-    lineExtensionAmount - allowanceTotalAmount + chargeTotalAmount
+    lineExtensionAmount - allowanceTotalAmount + chargeTotalAmount,
   );
   const taxInclusiveAmount = roundMoney(taxExclusiveAmount + totalTaxAmount);
 
@@ -337,8 +337,7 @@ function generateXml(config: InvoiceConfig): string {
 
   // Build the Invoice object for serialisation
   const invoiceObj: Record<string, unknown> = {
-    "@_xmlns":
-      "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2",
+    "@_xmlns": "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2",
     "@_xmlns:cbc":
       "urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2",
     "@_xmlns:cac":
@@ -384,15 +383,16 @@ function generateXml(config: InvoiceConfig): string {
 
   // Preceding invoice references (for credit notes)
   if (config.precedingInvoiceReferences?.length) {
-    invoiceObj["cac:BillingReference"] =
-      config.precedingInvoiceReferences.map((ref) => ({
+    invoiceObj["cac:BillingReference"] = config.precedingInvoiceReferences.map(
+      (ref) => ({
         "cac:InvoiceDocumentReference": {
           "cbc:ID": ref.id,
           ...(ref.issueDate
             ? { "cbc:IssueDate": formatDate(ref.issueDate) }
             : {}),
         },
-      }));
+      }),
+    );
   }
 
   if (config.contractReference) {
@@ -401,14 +401,8 @@ function generateXml(config: InvoiceConfig): string {
     };
   }
 
-  invoiceObj["cac:AccountingSupplierParty"] = buildParty(
-    config.seller,
-    true
-  );
-  invoiceObj["cac:AccountingCustomerParty"] = buildParty(
-    config.buyer,
-    false
-  );
+  invoiceObj["cac:AccountingSupplierParty"] = buildParty(config.seller, true);
+  invoiceObj["cac:AccountingCustomerParty"] = buildParty(config.buyer, false);
 
   if (paymentMeans) {
     invoiceObj["cac:PaymentMeans"] = buildPaymentMeans(paymentMeans);
@@ -418,7 +412,7 @@ function generateXml(config: InvoiceConfig): string {
   }
   if (allowanceCharges.length > 0) {
     invoiceObj["cac:AllowanceCharge"] = allowanceCharges.map((ac) =>
-      buildAllowanceCharge(ac, currency)
+      buildAllowanceCharge(ac, currency),
     );
   }
 
@@ -462,7 +456,10 @@ function generateXml(config: InvoiceConfig): string {
   // BR-53 / BT-111: when TaxCurrencyCode (BT-6) is present, emit a second
   // TaxTotal with the total VAT amount in the accounting currency (RON).
   // No subtotals are required in this second element.
-  if (currency !== DEFAULT_CURRENCY && config.taxCurrencyTaxAmount !== undefined) {
+  if (
+    currency !== DEFAULT_CURRENCY &&
+    config.taxCurrencyTaxAmount !== undefined
+  ) {
     invoiceObj["cac:TaxTotal"] = [
       primaryTaxTotal,
       {
@@ -517,7 +514,9 @@ function generateXml(config: InvoiceConfig): string {
     }
     itemObj["cbc:Name"] = line.name;
     if (line.sellerItemId) {
-      itemObj["cac:SellersItemIdentification"] = { "cbc:ID": line.sellerItemId };
+      itemObj["cac:SellersItemIdentification"] = {
+        "cbc:ID": line.sellerItemId,
+      };
     }
     const classifiedTaxCat: Record<string, unknown> = {
       "cbc:ID": line.taxCategoryCode,
@@ -581,7 +580,7 @@ function buildInvoicePeriod(period: InvoicePeriod): Record<string, unknown> {
 
 function buildParty(
   party: Seller | Buyer,
-  isSeller: boolean
+  isSeller: boolean,
 ): Record<string, unknown> {
   const address = party.address;
   const county = sanitizeCounty(address.countrySubentity);
@@ -710,7 +709,7 @@ function buildPaymentMeans(payment: PaymentMeans): Record<string, unknown> {
 
 function buildAllowanceCharge(
   ac: AllowanceCharge,
-  currency: string
+  currency: string,
 ): Record<string, unknown> {
   const acObj: Record<string, unknown> = {
     "cbc:ChargeIndicator": ac.chargeIndicator ? "true" : "false",
