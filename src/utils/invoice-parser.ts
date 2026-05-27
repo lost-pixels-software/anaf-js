@@ -6,7 +6,11 @@
  */
 
 import { XMLParser } from "fast-xml-parser";
-import type { InvoiceData } from "../types/invoice";
+import type {
+  InvoiceData,
+  ParsedAllowanceCharge,
+  ParsedInvoiceLine,
+} from "../types/invoice";
 
 // =============================================================================
 // XML Parser Setup
@@ -130,10 +134,35 @@ function parseParty(node: unknown) {
 }
 
 // =============================================================================
+// Allowance / charge helpers
+// =============================================================================
+
+/** Signed ex-VAT amount for one AllowanceCharge (UBL amount + chargeIndicator). */
+export function signedAllowanceChargeAmount(
+  chargeIndicator: boolean,
+  rawAmount: number,
+): number {
+  const abs = Math.abs(rawAmount);
+  if (chargeIndicator) {
+    return rawAmount < 0 ? rawAmount : abs;
+  }
+  return rawAmount < 0 ? rawAmount : -abs;
+}
+
+function sumAllowanceChargeAdjustment(
+  allowanceCharges: ParsedAllowanceCharge[],
+): number {
+  return allowanceCharges.reduce((sum, ac) => {
+    if (ac.amount === undefined) return sum;
+    return sum + signedAllowanceChargeAmount(!!ac.chargeIndicator, ac.amount);
+  }, 0);
+}
+
+// =============================================================================
 // Line Parser
 // =============================================================================
 
-function parseInvoiceLine(node: unknown) {
+function parseInvoiceLine(node: unknown): ParsedInvoiceLine | undefined {
   if (!node || typeof node !== "object") return undefined;
   const line = node as Record<string, unknown>;
 
@@ -176,6 +205,29 @@ function parseInvoiceLine(node: unknown) {
     unitPrice = getNumber((price as Record<string, unknown>).PriceAmount);
   }
 
+  const allowanceCharges = ensureArray(line.AllowanceCharge)
+    .map(parseAllowanceCharge)
+    .filter((x): x is ParsedAllowanceCharge => x !== undefined);
+
+  const allowanceChargeAdjustment = sumAllowanceChargeAdjustment(allowanceCharges);
+
+  const lineExtensionAmount = getNumber(line.LineExtensionAmount);
+  const grossLineExtensionAmount =
+    lineExtensionAmount ??
+    (quantity !== undefined && unitPrice !== undefined
+      ? quantity * unitPrice
+      : undefined);
+
+  const netLineExtensionAmount =
+    grossLineExtensionAmount !== undefined
+      ? grossLineExtensionAmount + allowanceChargeAdjustment
+      : undefined;
+
+  const netUnitPrice =
+    quantity !== undefined && quantity > 0 && netLineExtensionAmount !== undefined
+      ? netLineExtensionAmount / quantity
+      : undefined;
+
   return {
     id: getText(line.ID),
     name: item && typeof item === "object" ? getText((item as Record<string, unknown>).Name) : undefined,
@@ -184,7 +236,13 @@ function parseInvoiceLine(node: unknown) {
     quantity,
     unitCode,
     unitPrice,
-    lineExtensionAmount: getNumber(line.LineExtensionAmount),
+    lineExtensionAmount,
+    allowanceCharges:
+      allowanceCharges.length > 0 ? allowanceCharges : undefined,
+    allowanceChargeAdjustment:
+      allowanceChargeAdjustment !== 0 ? allowanceChargeAdjustment : undefined,
+    netLineExtensionAmount,
+    netUnitPrice,
     vatPercent,
     taxCategoryCode,
   };
@@ -337,7 +395,7 @@ function parsePaymentMeans(node: unknown) {
 // Allowance Charge Parser
 // =============================================================================
 
-function parseAllowanceCharge(node: unknown) {
+function parseAllowanceCharge(node: unknown): ParsedAllowanceCharge | undefined {
   if (!node || typeof node !== "object") return undefined;
   const ac = node as Record<string, unknown>;
 

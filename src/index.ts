@@ -201,7 +201,10 @@ export type { ParsedMessageDetails } from "./utils/message-parser";
 
 export { enrichMessagesWithCompanyNames } from "./utils/message-enricher";
 
-export { parseInvoiceXml } from "./utils/invoice-parser";
+export {
+  parseInvoiceXml,
+  signedAllowanceChargeAmount,
+} from "./utils/invoice-parser";
 
 // =============================================================================
 // Constants

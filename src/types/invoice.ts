@@ -40,8 +40,18 @@ export interface ParsedInvoiceLine {
   sellerItemId?: string;
   quantity?: number;
   unitCode?: string;
+  /** List/catalog unit price from Price/PriceAmount (before line allowances/charges). */
   unitPrice?: number;
+  /** Line total ex-VAT from LineExtensionAmount (before line allowances/charges). */
   lineExtensionAmount?: number;
+  /** Line-level discounts and surcharges (e.g. document discount, green tax). */
+  allowanceCharges?: ParsedAllowanceCharge[];
+  /** Signed sum of line allowance/charge amounts in document currency. */
+  allowanceChargeAdjustment?: number;
+  /** Line total ex-VAT after line-level allowances/charges. */
+  netLineExtensionAmount?: number;
+  /** unitPrice after line-level allowances/charges (netLineExtensionAmount / quantity). */
+  netUnitPrice?: number;
   vatPercent?: number;
   taxCategoryCode?: string;
 }
