@@ -8,6 +8,7 @@
 import { HttpClient } from "./utils/http-client";
 import { AnafValidationError, AnafNotFoundError } from "./shared/errors";
 import { COMPANY_INFO_URL, DEFAULT_TIMEOUT } from "./shared/constants";
+import { normalizeAddress } from "./localities";
 import type {
   CompanyData,
   CompaniesResult,
@@ -94,7 +95,7 @@ export class CompanyInfoClient {
   /**
    * Transform raw ANAF response to our format
    */
-  private transformCompany(raw: AnafFoundCompanyRaw): CompanyData {
+  private async transformCompany(raw: AnafFoundCompanyRaw): Promise<CompanyData> {
     const generalData: GeneralData = {
       taxId: raw.date_generale.cui,
       searchDate: raw.date_generale.data,
@@ -160,6 +161,10 @@ export class CompanyInfoClient {
       country: raw.adresa_sediu_social.stara,
       details: raw.adresa_sediu_social.sdetalii_Adresa,
       postalCode: this.normalizePostalCode(raw.adresa_sediu_social.scod_Postal),
+      normalized: await normalizeAddress({
+        county: raw.adresa_sediu_social.sdenumire_Judet,
+        city: raw.adresa_sediu_social.sdenumire_Localitate,
+      }),
     };
 
     const fiscalAddress: FiscalAddress = {
@@ -175,6 +180,10 @@ export class CompanyInfoClient {
       postalCode: this.normalizePostalCode(
         raw.adresa_domiciliu_fiscal.dcod_Postal
       ),
+      normalized: await normalizeAddress({
+        county: raw.adresa_domiciliu_fiscal.ddenumire_Judet,
+        city: raw.adresa_domiciliu_fiscal.ddenumire_Localitate,
+      }),
     };
 
     return {
@@ -215,6 +224,7 @@ export class CompanyInfoClient {
       return {
         success: true,
         data: result.data[0],
+        raw: result.raw?.found[0],
       };
     }
 
@@ -278,7 +288,7 @@ export class CompanyInfoClient {
       // Process found companies
       if (response.data.found && response.data.found.length > 0) {
         for (const raw of response.data.found) {
-          companies.push(this.transformCompany(raw));
+          companies.push(await this.transformCompany(raw));
         }
       }
 
@@ -294,12 +304,14 @@ export class CompanyInfoClient {
           success: false,
           notFound,
           error: "No companies found for the provided VAT codes",
+          raw: response.data,
         };
       }
 
       return {
         success: true,
         data: companies,
+        raw: response.data,
         notFound: notFound.length > 0 ? notFound : undefined,
       };
     } catch (error) {

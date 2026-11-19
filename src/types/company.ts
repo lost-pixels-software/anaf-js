@@ -5,6 +5,10 @@
  * Based on the PHP library's complete data structure.
  */
 
+import type { NormalizedAddress } from "../localities";
+
+export type { NormalizedAddress };
+
 // =============================================================================
 // Address Types
 // =============================================================================
@@ -33,6 +37,11 @@ export interface HqAddress {
   details: string;
   /** Postal code */
   postalCode: string;
+  /**
+   * County and locality as `anaf-js/localities` writes them ("Arges", "Barasti (Cicanesti)",
+   * "Sectorul 2"), matched from ANAF's own text; null fields when there is no exact match.
+   */
+  normalized: NormalizedAddress;
 }
 
 /**
@@ -59,6 +68,11 @@ export interface FiscalAddress {
   details: string;
   /** Postal code */
   postalCode: string;
+  /**
+   * County and locality as `anaf-js/localities` writes them ("Arges", "Barasti (Cicanesti)",
+   * "Sectorul 2"), matched from ANAF's own text; null fields when there is no exact match.
+   */
+  normalized: NormalizedAddress;
 }
 
 // =============================================================================
@@ -349,6 +363,8 @@ export interface CompaniesResult {
   success: boolean;
   /** Found companies */
   data?: CompanyData[];
+  /** ANAF's response exactly as sent */
+  raw?: AnafApiResponseRaw;
   /** Companies not found (CUI numbers) */
   notFound?: number[];
   /** Error message */
@@ -363,6 +379,8 @@ export interface CompanyResult {
   success: boolean;
   /** Found company data */
   data?: CompanyData;
+  /** ANAF's record for the company exactly as sent */
+  raw?: AnafFoundCompanyRaw;
   /** Error message */
   error?: string;
 }

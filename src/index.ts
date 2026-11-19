@@ -122,6 +122,7 @@ export type {
   InactiveState,
   SplitVat,
   VatPeriod,
+  NormalizedAddress,
 } from "./types/company";
 
 // =============================================================================

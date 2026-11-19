@@ -10,16 +10,11 @@ import type { BucharestSector, RomanianCountyCode } from "../types/codes";
 
 /**
  * Check if a county code represents Bucharest
- * @param county - County code or name
+ * @param county - County code or name ("RO-B", "B", "București", "MUNICIPIUL BUCUREŞTI")
  * @returns True if Bucharest
  */
 export function isBucharest(county: string): boolean {
-  const normalized = normalizeForMapping(county);
-  return (
-    normalized === "ROB" ||
-    normalized === "BUCURESTI" ||
-    normalized === "B"
-  );
+  return sanitizeCounty(county) === "RO-B";
 }
 
 /**
@@ -85,7 +80,11 @@ export function sanitizeCounty(county: string | undefined): string {
     return input;
   }
 
-  const normalized = normalizeForMapping(input);
+  // ANAF writes counties with their kind: "JUD. ARGEŞ", "MUNICIPIUL BUCUREŞTI".
+  const normalized = normalizeForMapping(input).replace(
+    /^(?:JUDETUL|JUD|MUNICIPIUL|MUN)(?=[A-Z])/,
+    "",
+  );
 
   // Common county short code and name mappings
   // All keys are normalized (ASCII only, no spaces/dashes)

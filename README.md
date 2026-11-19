@@ -90,9 +90,18 @@ if (result.success && result.data) {
   console.log(company.fiscalAddress);    // Fiscal address
   console.log(company.vatRegistration);  // VAT status
   console.log(company.generalData.eFacturaStatus); // e-Factura enrollment
+
+  // ANAF's own text, renamed only: "MUNICIPIUL BUCUREŞTI", "Sector 2 Mun. Bucureşti"
+  console.log(company.fiscalAddress.county, company.fiscalAddress.city);
+  // The same place as the locality list writes it (see "Romanian Localities")
+  console.log(company.fiscalAddress.normalized);
+  // { countyCode: "RO-B", county: "Bucuresti", locality: "Sectorul 2" }
+
+  console.log(result.raw); // ANAF's record exactly as sent, with its original field names
 }
 
-// Batch lookup (max 100)
+// Batch lookup (max 100); `batch.raw` is ANAF's whole response
+
 const batch = await client.batchGetCompanyData(["RO123", "RO456"]);
 ```
 
@@ -284,6 +293,8 @@ Client for fetching Romanian company data from the public ANAF API. No authentic
 | `getCompanyData(vatCode, date?)` | Get data for a single company |
 | `batchGetCompanyData(vatCodes, date?)` | Fetch data for up to 100 companies at once |
 | `isValidVatCode(vatCode)` | Validate if a VAT code format is correct |
+
+Each address (`hqAddress`, `fiscalAddress`) keeps ANAF's text and adds `normalized`: the county and locality matched to the [locality list](#romanian-localities). A field is `null` when there is no exact match, so nothing is guessed.
 
 ### `AnafAuthenticator`
 
@@ -490,7 +501,27 @@ roundMoney(1.005);                // 1.01
 The library automatically sanitizes Romanian addresses to ensure CIUS-RO compliance:
 - **Counties**: Converts names ("Arges", "București") or short codes ("AG", "B") to ISO 3166-2:RO format ("RO-AG", "RO-B").
 - **Bucharest**: Automatically converts city names like "Sector 1" or "S1" to "SECTOR1" (required format) when the county is Bucharest.
+- **Counties as ANAF writes them**: "MUNICIPIUL BUCUREŞTI" and "JUD. ARGEŞ" are recognized too.
 - **Validation**: `Invoice.buildXml` will throw an error if a Romanian address is missing a county or uses an unrecognized one, helping you catch errors before uploading to ANAF.
+
+### Romanian Localities
+
+Every county and its localities (about 13,800), for address pickers and for cleaning up typed or imported addresses. Every name is accepted by `Invoice.buildXml` as is.
+
+```typescript
+import { counties, findCounty, loadLocalities, matchLocality } from "anaf-js/localities";
+
+counties;                                   // [{ code: "RO-AB", name: "Alba" }, …] (42)
+findCounty("JUD. ARGEŞ");                   // { code: "RO-AG", name: "Arges" }
+
+const arges = await loadLocalities("RO-AG"); // ["Adunati (Raca)", …, "Pitesti", …]
+matchLocality("Sat Bărăşti Com. Cicăneşti", arges); // "Barasti (Cicanesti)"
+matchLocality("Sector 2 Mun. Bucureşti", await loadLocalities("RO-B")); // "Sectorul 2"
+```
+
+Villages are written with their commune, "Barasti (Cicanesti)"; București has its six sectors, "Sectorul 1". Names have no diacritics.
+
+> **In a browser:** the list is about 350 KB, so it has its own entry point (`anaf-js/localities`) and each county is a separate chunk. Importing `anaf-js` never loads it, and `loadLocalities` fetches only the county asked for. Load the county the user picks; don't loop over every county in a browser.
 
 parseMessageDetails(
   "Factura cu id_incarcare=123 emisa de cif_emitent=456 pentru cif_beneficiar=789"
